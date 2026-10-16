@@ -14,8 +14,9 @@
   Benjamin K. Smith (BenCreating), bluecarrot16, ElizaWy, JaidynReiman, Nila122.
   Vollständige Liste mit Links pro Einzelteil: `characters/hero-credits.txt`.
 
-## Monster und Gegenstände
+## Unterwelt, Monster und Gegenstände
 
 - **Dungeon Crawl Stone Soup** Kachelsatz, Lizenz CC0 (gemeinfrei, Nennung erwünscht).
   https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental
-  Dateien: `dcss/monster/*.png`, `dcss/item/*.png`
+  Dateien: `dcss/monster/*.png`, `dcss/item/*.png`, `dcss/unterwelt.png` (zusammengestellt mit
+  `tools/build_unterwelt.py`, Böden teils aufgehellt)

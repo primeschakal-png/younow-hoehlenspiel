@@ -14,7 +14,7 @@ const FACING_ANGLE = { N: 0, E: 90, S: 180, W: 270 };
 // Alle Nummern laut assets/tiles/magecity.json
 const F = (row, col) => row * 8 + col;
 
-// Viertel je Ebene: ungerade = Marktviertel (Sandstein), gerade = verfallenes Viertel (grau, Moos)
+// Viertel der Stadt: Marktviertel (Sandstein) oder verfallenes Viertel (grau, Moos)
 const THEMES = [
   {
     floor: (x, y) => { const r = hash(x, y); return r < 0.2 ? 75 : r < 0.35 ? 76 : 81; },
@@ -81,6 +81,14 @@ const MONSTER_KEYS = {
   "Streunender Wolf": "wolf", "Skelett": "skelett", "Steingolem": "steingolem", "Oger": "oger",
 };
 const FLYING = new Set(["Fledermaus"]);
+// Unterwelt: Gruppen aus assets/dcss/unterwelt.json
+const UNDER = {
+  keller: { floor: "keller_floor", wall: "keller_wall", deco: "keller_deco", decoChance: 0.05, hall: "keller_deco", dark: 0.55 },
+  katakomben: { floor: "kata_floor", wall: "kata_wall", wallAlt: "kata_wall_alt", deco: "kata_deco", decoChance: 0.06,
+    hall: "kata_deco", dark: 0.72 },
+  hoehle: { floor: "hoehle_floor", wall: "hoehle_wall", deco: "hoehle_deco", decoChance: 0.07, hall: "hoehle_deco", dark: 0.8 },
+};
+const LIGHT_SIZE = 2000;   // Durchmesser des Dunkelheitsbilds in Weltpixeln
 const ITEM_KEYS = ["chest_closed", "chest_open", "trap", "food", "water", "potion", "gold"];
 const PLAZA_PLANTS = [16, 2, 3, 10, 11, 12];  // Ecken eines Platzes
 
@@ -146,6 +154,38 @@ function makeTextures(sc) {
     g.fillRect(0, i, TILE, 1);
   }
   g.generateTexture("wallshade", TILE, TILE);
+
+  // dasselbe für eine Mauer links daneben, schwächer
+  g.clear();
+  for (let i = 0; i < 6; i++) {
+    g.fillStyle(0x000000, 0.22 * (1 - i / 6));
+    g.fillRect(i, 0, 1, TILE);
+  }
+  g.generateTexture("wallshade_side", TILE, TILE);
+
+  // unter Tage: Mauerkante oben deutlicher
+  g.clear();
+  for (let i = 0; i < 12; i++) {
+    g.fillStyle(0x000000, 0.55 * (1 - i / 12));
+    g.fillRect(0, i, TILE, 1);
+  }
+  g.generateTexture("wallshade_u", TILE, TILE);
+
+  // Dunkelheit: innen durchsichtig, außen schwarz. Wird groß skaliert und folgt der Figur.
+  if (!sc.textures.exists("darkness")) {
+    const size = 512;
+    const tex = sc.textures.createCanvas("darkness", size, size);
+    const ctx = tex.getContext();
+    const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    grad.addColorStop(0, "rgba(0,0,0,0)");
+    grad.addColorStop(0.05, "rgba(0,0,0,0)");
+    grad.addColorStop(0.12, "rgba(0,0,0,0.6)");
+    grad.addColorStop(0.21, "rgba(0,0,0,1)");
+    grad.addColorStop(1, "rgba(0,0,0,1)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    tex.refresh();
+  }
 
   // Platzhalter-Wände (falls die Kacheldatei fehlt)
   for (let m = 0; m < 16; m++) {
@@ -247,6 +287,8 @@ class CaveScene extends Phaser.Scene {
   preload() {
     this.load.spritesheet("city", "assets/tiles/magecity.png", { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet("herosheet", "assets/characters/hero.png", { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet("unter", "assets/dcss/unterwelt.png", { frameWidth: 32, frameHeight: 32 });
+    this.load.json("unterwelt", "assets/dcss/unterwelt.json");
     for (const key of new Set(Object.values(MONSTER_KEYS))) this.load.image("mon_" + key, "assets/dcss/monster/" + key + ".png");
     for (const key of ITEM_KEYS) this.load.image("item_" + key, "assets/dcss/item/" + key + ".png");
   }
@@ -285,15 +327,60 @@ class CaveScene extends Phaser.Scene {
   buildLevel(s) {
     if (this.layer) this.layer.destroy(true);
     if (this.stairsImg) this.stairsImg.destroy();
+    if (this.decor) this.decor.forEach((d) => d.img.destroy());
+    this.decor = [];
+    (this.levelTimers || []).forEach((t) => t.remove());
+    this.levelTimers = [];
     this.layer = this.add.container(0, 0).setDepth(0);
     this.tileImgs = [];
+    const areaKey = (s.area && s.area.key) || "stadt";
+    const under = UNDER[areaKey] && this.textures.exists("unter") && this.cache.json.get("unterwelt") ? UNDER[areaKey] : null;
+    this.under = under;
+    if (under) this.buildUnderground(s, under);
+    else this.buildCity(s);
+    this.stairsPos = s.stairs;
+    if (this.textures.exists("unter") && this.cache.json.get("unterwelt")) {
+      const frame = this.uFrames("stairs_down")[0];
+      this.stairsImg = this.add.image(s.stairs[0] * TILE, s.stairs[1] * TILE, "unter", frame);
+    } else {
+      this.stairsImg = this.add.image(s.stairs[0] * TILE, s.stairs[1] * TILE, "stairs");
+    }
+    this.stairsImg.setOrigin(0.5).setDepth(1).setVisible(false);
+
+    for (const e of this.entities.values()) e.imgs.forEach((i) => { this.tweens.killTweensOf(i); i.destroy(); });
+    this.entities.clear();
+    for (const e of s.entities || []) this.addEntity(e);
+
+    if (!this.figure) {
+      if (this.useSheet) {
+        this.figure = this.add.sprite(0, 0, "herosheet", 22 * 13).setOrigin(0.5, 0.97).setDepth(10);
+      } else {
+        this.figure = this.add.image(0, 0, "hero").setDepth(10);
+      }
+      this.pointer = this.add.image(0, 0, "pointer").setDepth(11).setVisible(!this.useSheet);
+    }
+    this.dead = false;
+
+    this.step = s.step || 0.25;
+    this.reveal(s.revealed, true);
+    // keine Kamera-Grenzen: die Figur bleibt immer im oberen Bildteil,
+    // damit Abstimmung und Chat unten sie nie verdecken
+    this.cameras.main.removeBounds();
+    this.moveFigure(s.pos, s.facing, true);
+    this.cameras.main.startFollow(this.figure, true, 0.12, 0.12);
+    this.cameras.main.setZoom(ZOOM);
+    this.cameras.main.setFollowOffset(0, -90 / ZOOM);
+    this.setDarkness(under ? under.dark : 0);
+  }
+
+  // Stadt: Häuserzeilen mit Dächern und Fassaden, Gärten, Plätze
+  buildCity(s) {
     const rows = s.tiles;
     const isFloor = (x, y) => x >= 0 && y >= 0 && x < s.tw && y < s.th && rows[y][x] === ".";
     const hasCity = this.textures.exists("city");
-    const ti = (s.depth + 1) % 2;
+    // Viertel je Karte zufällig, aber für dieselbe Karte immer gleich
+    const ti = Math.floor(hash(s.stairs[0] * 3 + s.tw, s.stairs[1] * 5 + s.depth) * THEMES.length);
     const theme = THEMES[ti];
-    if (this.decor) this.decor.forEach((d) => d.img.destroy());
-    this.decor = [];
     const overlays = [];
 
     // Häuser: jede senkrechte Mauerfolge ist unten Fassade (2 Reihen), darüber Dach.
@@ -473,33 +560,78 @@ class CaveScene extends Phaser.Scene {
       });
     }
 
-    this.stairsPos = s.stairs;
-    this.stairsImg = this.add.image(s.stairs[0] * TILE, s.stairs[1] * TILE, "stairs")
-      .setOrigin(0.5).setDepth(1).setVisible(false);
+  }
 
-    for (const e of this.entities.values()) e.imgs.forEach((i) => { this.tweens.killTweensOf(i); i.destroy(); });
-    this.entities.clear();
-    for (const e of s.entities || []) this.addEntity(e);
+  uFrames(group) {
+    return (this.cache.json.get("unterwelt") || {})[group] || [0];
+  }
 
-    if (!this.figure) {
-      if (this.useSheet) {
-        this.figure = this.add.sprite(0, 0, "herosheet", 22 * 13).setOrigin(0.5, 0.97).setDepth(10);
-      } else {
-        this.figure = this.add.image(0, 0, "hero").setDepth(10);
+  uPick(group, x, y, salt = 0) {
+    const list = this.uFrames(group);
+    return list[Math.floor(hash(x + salt * 17, y + salt * 31) * list.length)];
+  }
+
+  // Unterwelt: Draufsicht wie in Dungeon Crawl, Mauern als volle Kacheln,
+  // auf dem Boden unter einer Mauer ein Schatten, damit die Mauer Höhe bekommt
+  buildUnderground(s, u) {
+    const rows = s.tiles;
+    const isFloor = (x, y) => x >= 0 && y >= 0 && x < s.tw && y < s.th && rows[y][x] === ".";
+    const overlays = [];
+    for (let y = 0; y < s.th; y++) {
+      const row = [];
+      for (let x = 0; x < s.tw; x++) {
+        const extras = [];
+        let img;
+        if (isFloor(x, y)) {
+          img = this.add.image(x * TILE, y * TILE, "unter", this.uPick(u.floor, x, y));
+          if (!isFloor(x, y - 1)) {
+            const sh = this.add.image(x * TILE, y * TILE, "wallshade_u").setOrigin(0).setVisible(false);
+            extras.push(sh); overlays.push(sh);
+          }
+          if (!isFloor(x - 1, y)) {
+            const sh = this.add.image(x * TILE, y * TILE, "wallshade_side").setOrigin(0).setVisible(false);
+            extras.push(sh); overlays.push(sh);
+          }
+        } else {
+          const alt = u.wallAlt && hash(x + 5, y + 9) < 0.15;
+          img = this.add.image(x * TILE, y * TILE, "unter", this.uPick(alt ? u.wallAlt : u.wall, x, y, 1));
+        }
+        img.setOrigin(0).setVisible(false);
+        img.extras = extras;
+        this.layer.add(img);
+        row.push(img);
       }
-      this.pointer = this.add.image(0, 0, "pointer").setDepth(11).setVisible(!this.useSheet);
+      this.tileImgs.push(row);
     }
-    this.dead = false;
+    overlays.forEach((o) => this.layer.add(o));
 
-    this.step = s.step || 0.25;
-    this.reveal(s.revealed, true);
-    // keine Kamera-Grenzen: die Figur bleibt immer im oberen Bildteil,
-    // damit Abstimmung und Chat unten sie nie verdecken
-    this.cameras.main.removeBounds();
-    this.moveFigure(s.pos, s.facing, true);
-    this.cameras.main.startFollow(this.figure, true, 0.12, 0.12);
-    this.cameras.main.setZoom(ZOOM);
-    this.cameras.main.setFollowOffset(0, -90 / ZOOM);
+    // Kleinkram am Gassenrand: nur an Mauern, nie in der Mitte des Wegs
+    for (let y = 0; y < s.th; y++) {
+      for (let x = 0; x < s.tw; x++) {
+        if (!isFloor(x, y) || hash(x * 3 + 7, y * 5 + 1) > u.decoChance) continue;
+        const walls = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => !isFloor(x + dx, y + dy)).length;
+        if (walls < 2) continue;
+        const d = this.add.image(x * TILE, y * TILE, "unter", this.uPick(u.deco, x, y, 2))
+          .setOrigin(0).setDepth(2).setVisible(false);
+        this.decor.push({ img: d, x, y });
+      }
+    }
+    // Hallen (in der Stadt Plätze): vier Säulen oder Statuen in den Ecken
+    for (const [px, py, pw, ph] of s.plazas || []) {
+      [[px, py], [px + pw - 1, py], [px, py + ph - 1], [px + pw - 1, py + ph - 1]].forEach(([cx, cy], i) => {
+        const d = this.add.image(cx * TILE, cy * TILE, "unter", this.uPick(u.hall, cx, cy, i))
+          .setOrigin(0).setDepth(2).setVisible(false);
+        this.decor.push({ img: d, x: cx, y: cy });
+      });
+    }
+  }
+
+  // Dunkelheit mit Lichtkreis um die Figur (unter Tage)
+  setDarkness(alpha) {
+    if (!this.dark) {
+      this.dark = this.add.image(0, 0, "darkness").setDepth(15).setDisplaySize(LIGHT_SIZE, LIGHT_SIZE);
+    }
+    this.dark.setVisible(alpha > 0).setAlpha(alpha);
   }
 
   // Garten: Hecke am Rand, Zaun zur Gasse hin, innen Gras mit Beeten, Blumen, Kürbissen und kleinen Bäumen
@@ -526,7 +658,16 @@ class CaveScene extends Phaser.Scene {
     const visible = !!(tile && tile.visible);
     const frames = this.textures.exists("city") ? ENTITY_FRAMES[e.kind] : null;
     const imgs = [];
-    if (this.textures.exists("city") && e.kind === "spring") {
+    const UNDER_ENT = { spring: "fountain", shrine: "altar", mushroom: "pilz" };
+    if (this.under && UNDER_ENT[e.kind]) {
+      imgs.push(this.add.image(bx, by, "unter", this.uFrames(UNDER_ENT[e.kind])[0]).setOrigin(0).setDepth(3));
+      if (e.kind === "spring" && this.uFrames("fountain").length > 1) {
+        // Wasser bewegt sich: zwei Bilder im Wechsel
+        const [a, b] = this.uFrames("fountain");
+        const img = imgs[0];
+        this.levelTimers.push(this.time.addEvent({ delay: 450, loop: true, callback: () => img.active && img.setFrame(img.frame.name === a ? b : a) }));
+      }
+    } else if (this.textures.exists("city") && e.kind === "spring") {
       SPRING_FRAMES.forEach((row, ry) => row.forEach((f, rx) => {
         imgs.push(this.add.image(bx + rx * 16, by + ry * 16, "city", f)
           .setOrigin(0).setScale(0.5).setDepth(3));
@@ -673,8 +814,13 @@ class CaveScene extends Phaser.Scene {
     });
   }
 
-  update() {
+  update(time) {
     if (!this.figure) return;
+    if (this.dark && this.dark.visible) {
+      // am Lagerfeuer flackert das Licht etwas
+      const flicker = this.camping ? 1.15 + Math.sin(time / 90) * 0.03 + Math.sin(time / 37) * 0.02 : 1;
+      this.dark.setPosition(this.figure.x, this.figure.y - 20).setDisplaySize(LIGHT_SIZE * flicker, LIGHT_SIZE * flicker);
+    }
     let top = this.figure.y - (this.useSheet ? 50 : 18);
     if (this.actText.visible) {
       this.actText.setPosition(this.figure.x, top);
@@ -902,7 +1048,7 @@ function handle(msg) {
   }
   switch (msg.type) {
     case "state":
-      el("depth").textContent = "Ebene " + msg.depth;
+      el("depth").textContent = "Ebene " + msg.depth + (msg.area ? " · " + msg.area.name : "");
       renderStats(msg.hero);
       lastArchetype = null;
       renderCharacter(msg.character);

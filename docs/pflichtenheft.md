@@ -16,9 +16,15 @@ Grafik: Mage City Arcanos (Hyptosis, CC0), Kachelbeschreibung in `assets/tiles/m
 Das Labyrinth wird als Stadt dargestellt: Gassen 2 Kacheln breit, dazwischen Häuserblöcke von 4 Kacheln
 Dicke. Jede Mauerfolge ist unten Fassade (2 Reihen, mit Fenstern und gelegentlich einem Eingang), darüber
 Dach. Häuserzeilen werden in Häuser von meist 3 Kacheln Breite geteilt, jedes Haus würfelt Dach und Fenster aus.
-Plätze entstehen aus vier verbundenen Zellen, in der Mitte steht ein Brunnen. Ungerade Ebenen: Marktviertel
-(Sandstein, Holzdächer, Kopfsteinpflaster). Gerade Ebenen: verfallenes Viertel (graue Ziegel, Moosdächer,
-Plattenweg). Weitere Viertel (Gärten, Kellergewölbe) sind geplant.
+Plätze entstehen aus vier verbundenen Zellen (Brunnen, Markt, Park oder Statuen), dazu Gärten zwischen den
+Häusern. Das Viertel wird je Karte gewürfelt: Marktviertel (Sandstein, Holzdächer, Kopfsteinpflaster) oder
+verfallenes Viertel (graue Ziegel, Moosdächer, Plattenweg).
+
+Gebiete nach Tiefe (in `server/game.py`, Liste `AREAS`): Ebene 1 Magierstadt, Ebene 2 Keller, Ebene 3 Katakomben,
+ab Ebene 4 Höhlen. Unter Tage ist die Karte eine Draufsicht im Stil von Dungeon Crawl Stone Soup (CC0, Kachelblatt
+`assets/dcss/unterwelt.png`, erzeugt mit `tools/build_unterwelt.py`), mit Dunkelheit und Lichtkreis um die Figur,
+der am Lagerfeuer flackert. Brunnen, Statuen und Gemüse werden dort zu Springbrunnen, Engelsstatue und Pilzen.
+Monster, Truhen, Fallen und Beute-Symbole stammen ebenfalls aus Dungeon Crawl Stone Soup.
 
 Ursprüngliche Beschreibung:
 
