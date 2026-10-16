@@ -505,9 +505,9 @@ class Game:
             self.remove_entity(cell)
             loot = self._chest_loot()
             self.outcome(0.6)
-            self.log(f"{h.name} durchsucht einen Vorratssack: {loot}.")
+            self.log(f"{h.name} öffnet eine alte Truhe: {loot}.")
             self.emit({"type": "anim", "name": "emote"})
-            self.comment(f"Du hast einen alten Vorratssack durchsucht und darin gefunden: {loot}.")
+            self.comment(f"Du hast eine alte Truhe geöffnet und darin gefunden: {loot}.")
             self.emit_stats()
             self.pause(BAL["event_pause"])
             return
@@ -541,6 +541,8 @@ class Game:
 
         if kind == "trap":
             self.remove_entity(cell)
+            x, y = Maze.center(cell)
+            self.emit({"type": "trap", "x": x, "y": y})
             target = 10 + self.depth // 2
             if self.dice("Falle! Ausweichen", target):
                 self.log(f"Eine Falle schnappt zu, aber {h.name} springt rechtzeitig weg.")
@@ -563,13 +565,18 @@ class Game:
             target = 8 + e["level"] + self.depth
             if self.dice(f"Kampf gegen {name}", target):
                 loot = ""
+                items = []
                 if self.rnd.random() < 0.5 and h.food < h.max_food:
                     h.food += 1
                     loot = " und findet etwas Essbares"
+                    items.append("food")
                 gold = self.rnd.randint(0, 3 + self.depth)
                 h.gold += gold
                 if gold:
                     loot += f", dazu {gold} Gold"
+                    items.append("gold")
+                if items:
+                    self.emit({"type": "loot", "items": items})
                 self.log(f"{h.name} besiegt: {name}{loot}.")
                 self.comment(f"Du hast im Kampf gegen {name} gewonnen.")
                 self.outcome(0.4)
@@ -590,20 +597,26 @@ class Game:
         h = self.hero
         rich = max(0.3, 1.0 - self.depth * 0.08)  # tiefer = karger
         found = []
+        items = []
         if self.rnd.random() < 0.6 * rich and h.food < h.max_food:
             n = min(h.max_food - h.food, self.rnd.randint(1, 2))
             h.food += n
             found.append(f"{n}x Proviant")
+            items += ["food"] * n
         if self.rnd.random() < 0.5 * rich and h.water < h.max_water:
             n = min(h.max_water - h.water, self.rnd.randint(1, 2))
             h.water += n
             found.append(f"{n}x Wasser")
+            items += ["water"] * n
         if self.rnd.random() < 0.25 and h.potions < h.max_potions:
             h.potions += 1
             found.append("einen Heiltrank")
+            items.append("potion")
         gold = self.rnd.randint(1, 5 + self.depth * 2)
         h.gold += gold
         found.append(f"{gold} Gold")
+        items.append("gold")
+        self.emit({"type": "loot", "items": items})
         return ", ".join(found)
 
     # ---------- Lager ----------

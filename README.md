@@ -16,7 +16,7 @@ Zuschauer können die Figur mit `!sag <Text>` ansprechen (pro Zuschauer höchste
 
 Für OBS: Browserquelle mit `http://localhost:8000/`, Größe 1280 x 720 (ohne Test-Chat). Die Grafik wird doppelt vergrößert, mit `?zoom=1` oder `?zoom=3` an der Adresse lässt sich das ändern.
 
-Grafik: Kacheln aus „Mage City Arcanos“ von Hyptosis (CC0), siehe `assets/CREDITS.md`.
+Grafik: Kacheln aus „Mage City Arcanos“ von Hyptosis (CC0), Monster und Gegenstände aus „Dungeon Crawl Stone Soup“ (CC0), Spielfigur aus dem LPC-Generator (OGA-BY 3.0), siehe `assets/CREDITS.md`.
 
 ## Aufbau
 

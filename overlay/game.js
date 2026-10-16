@@ -71,10 +71,17 @@ const PLAZA_LAYOUTS = {
 // Gegenstände: Bildnummern von oben nach unten (eine Spalte)
 const ENTITY_FRAMES = {
   shrine: [98, 106, 114],      // statue_antik, 1x3
-  chest: [79],                 // Jutesack
   mushroom: [262],             // Kürbis
 };
 const SPRING_FRAMES = [[22, 23], [30, 31]];   // Brunnen 2x2
+
+// Dungeon Crawl Stone Soup (CC0): Monster und Gegenstände, je 32x32
+const MONSTER_KEYS = {
+  "Ratte": "ratte", "Fledermaus": "fledermaus", "Riesenspinne": "riesenspinne", "Goblin": "goblin",
+  "Streunender Wolf": "wolf", "Skelett": "skelett", "Steingolem": "steingolem", "Oger": "oger",
+};
+const FLYING = new Set(["Fledermaus"]);
+const ITEM_KEYS = ["chest_closed", "chest_open", "trap", "food", "water", "potion", "gold"];
 const PLAZA_PLANTS = [16, 2, 3, 10, 11, 12];  // Ecken eines Platzes
 
 // LPC-Spritesheet: 64x64 je Bild, 13 Bilder pro Zeile, Richtungen je Animation in der Reihenfolge N, W, S, O
@@ -229,7 +236,8 @@ class CaveScene extends Phaser.Scene {
     this.stairsImg = null;
     this.stairsPos = null;
     this.step = 0.25;
-    this.entities = new Map();   // id -> { img, x, y }
+    this.entities = new Map();   // id -> { imgs, x, y, kind }
+    this.fight = null;
     this.campfire = null;
     this.actText = null;
     this.sayText = null;
@@ -239,6 +247,8 @@ class CaveScene extends Phaser.Scene {
   preload() {
     this.load.spritesheet("city", "assets/tiles/magecity.png", { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet("herosheet", "assets/characters/hero.png", { frameWidth: 64, frameHeight: 64 });
+    for (const key of new Set(Object.values(MONSTER_KEYS))) this.load.image("mon_" + key, "assets/dcss/monster/" + key + ".png");
+    for (const key of ITEM_KEYS) this.load.image("item_" + key, "assets/dcss/item/" + key + ".png");
   }
 
   create() {
@@ -467,7 +477,7 @@ class CaveScene extends Phaser.Scene {
     this.stairsImg = this.add.image(s.stairs[0] * TILE, s.stairs[1] * TILE, "stairs")
       .setOrigin(0.5).setDepth(1).setVisible(false);
 
-    for (const e of this.entities.values()) e.imgs.forEach((i) => i.destroy());
+    for (const e of this.entities.values()) e.imgs.forEach((i) => { this.tweens.killTweensOf(i); i.destroy(); });
     this.entities.clear();
     for (const e of s.entities || []) this.addEntity(e);
 
@@ -526,18 +536,93 @@ class CaveScene extends Phaser.Scene {
         const dy = i - (frames.length - 1);   // obere Kacheln weiter oben
         imgs.push(this.add.image(bx, by + dy * TILE, "city", f).setOrigin(0).setDepth(3));
       });
+    } else if (e.kind === "monster" && this.textures.exists("mon_" + MONSTER_KEYS[e.name])) {
+      const fx = e.x * TILE, fy = e.y * TILE + 14;
+      const fly = FLYING.has(e.name);
+      const shadow = this.add.ellipse(fx, fy - 2, 20, 6, 0x000000, 0.35).setDepth(3);
+      const img = this.add.image(fx, fy - (fly ? 10 : 0), "mon_" + MONSTER_KEYS[e.name]).setOrigin(0.5, 1).setDepth(4);
+      if (e.x < this.figureTileX()) img.setFlipX(true);
+      // leichtes Wippen, versetzt, damit nicht alle im Gleichtakt hüpfen
+      this.tweens.add({
+        targets: img, y: img.y - (fly ? 5 : 2), duration: fly ? 380 : 650 + (e.id % 5) * 60,
+        yoyo: true, repeat: -1, ease: "Sine.easeInOut", delay: (e.id % 7) * 90,
+      });
+      imgs.push(shadow, img);
+    } else if (e.kind === "chest" && this.textures.exists("item_chest_closed")) {
+      imgs.push(this.add.image(e.x * TILE, e.y * TILE + 14, "item_chest_closed").setOrigin(0.5, 1).setDepth(3));
     } else {
       imgs.push(this.add.image(bx, by, "ent_" + e.kind).setOrigin(0).setDepth(3));
     }
     imgs.forEach((img) => img.setVisible(visible));
-    this.entities.set(e.id, { imgs, x: e.x, y: e.y });
+    this.entities.set(e.id, { imgs, x: e.x, y: e.y, kind: e.kind });
+  }
+
+  // Kampfausgang: besiegt blinkt auf und verschwindet, sonst flieht der Gegner
+  resolveFight(won) {
+    const f = this.fight;
+    if (!f) return;
+    this.fight = null;
+    const img = f.e.imgs[1];
+    if (won) {
+      this.time.delayedCall(700, () => img.active && img.setTintFill(0xffffff));
+      this.time.delayedCall(820, () => img.active && img.clearTint());
+      f.fade(1000);
+    } else {
+      img.setFlipX(f.dx < 0);
+      this.tweens.add({ targets: f.e.imgs, x: `+=${f.dx * 70}`, y: `+=${f.dy * 70}`, delay: 900, duration: 700 });
+      f.fade(1100);
+    }
+  }
+
+  figureTileX() {
+    return this.figure ? this.figure.x / TILE : 0;
+  }
+
+  // Falle schnappt zu: kurz sichtbar, dann weg
+  showTrap(x, y) {
+    if (!this.textures.exists("item_trap")) return;
+    const img = this.add.image(x * TILE, y * TILE + 14, "item_trap").setOrigin(0.5, 1).setDepth(3).setAlpha(0);
+    this.tweens.add({ targets: img, alpha: 1, duration: 150 });
+    this.tweens.add({ targets: img, alpha: 0, delay: 2600, duration: 600, onComplete: () => img.destroy() });
+  }
+
+  // Beute steigt über dem Kopf auf
+  showLoot(items) {
+    if (!this.figure) return;
+    const list = items.filter((k) => this.textures.exists("item_" + k)).slice(0, 6);
+    const top = this.figure.y - (this.useSheet ? 46 : 18);
+    list.forEach((k, i) => {
+      const x = this.figure.x + (i - (list.length - 1) / 2) * 18;
+      const img = this.add.image(x, top, "item_" + k).setScale(0.6).setDepth(21).setAlpha(0);
+      this.tweens.add({ targets: img, alpha: 1, y: top - 14, duration: 350, delay: i * 120, ease: "Back.easeOut" });
+      this.tweens.add({ targets: img, alpha: 0, y: top - 30, duration: 500, delay: 1500 + i * 120, onComplete: () => img.destroy() });
+    });
   }
 
   removeEntity(id) {
     const e = this.entities.get(id);
     if (!e) return;
-    this.tweens.add({ targets: e.imgs, alpha: 0, duration: 400, onComplete: () => e.imgs.forEach((i) => i.destroy()) });
     this.entities.delete(id);
+    const fade = (delay) => this.tweens.add({
+      targets: e.imgs, alpha: 0, duration: 500, delay,
+      onComplete: () => e.imgs.forEach((i) => { this.tweens.killTweensOf(i); i.destroy(); }),
+    });
+    // Die Figur steht jetzt auf dem Feld: Truhe und Gegner rücken ein Stück vor sie
+    const [dx, dy] = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }[this.facing] || [0, 1];
+    const ahead = (dist) => this.tweens.add({ targets: e.imgs, x: `+=${dx * dist}`, y: `+=${dy * dist}`, duration: 180 });
+    if (e.kind === "chest" && this.textures.exists("item_chest_open")) {
+      e.imgs[0].setTexture("item_chest_open");
+      ahead(22);
+      fade(2200);
+    } else if (e.kind === "monster" && e.imgs.length > 1) {
+      ahead(26);
+      e.imgs[1].setFlipX(dx > 0);   // schaut zur Figur
+      const fight = { e, dx, dy, fade };
+      this.fight = fight;
+      this.time.delayedCall(4000, () => { if (this.fight === fight) this.resolveFight(true); });   // falls kein Würfel kommt
+    } else {
+      fade(0);
+    }
   }
 
   reveal(list, instant) {
@@ -837,8 +922,15 @@ function handle(msg) {
     case "entity_remove":
       scene.removeEntity(msg.id);
       break;
+    case "trap":
+      scene.showTrap(msg.x, msg.y);
+      break;
+    case "loot":
+      scene.showLoot(msg.items);
+      break;
     case "dice":
       showDice(msg);
+      if (msg.label.startsWith("Kampf")) scene.resolveFight(msg.success);
       scene.action(msg.label.startsWith("Kampf") ? "slash" : "emote");
       break;
     case "anim":
