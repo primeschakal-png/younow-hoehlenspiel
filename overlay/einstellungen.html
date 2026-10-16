@@ -129,6 +129,10 @@
     </div>
   </header>
   <main>
+    <section class="card">
+      <h2>YouNow-Verbindung</h2>
+      <p class="help" id="yn-info">Aus. Unten unter „YouNow“ einschalten und den Namen des Streams eintragen.</p>
+    </section>
     <section class="card" id="younow">
       <h2>YouNow-Mitschnitt</h2>
       <p class="help" id="raw-info">Noch nichts empfangen. Userscript „younow-mitschnitt“ in Tampermonkey installieren und einen YouNow-Stream öffnen.</p>
@@ -348,6 +352,20 @@ async function rawInfo() {
 }
 rawInfo();
 setInterval(rawInfo, 5000);
+
+async function ynInfo() {
+  try {
+    const d = await (await fetch("/api/younow/status")).json();
+    let t;
+    if (d.state === "aus" || d.state === "kein Name eingetragen") t = d.state === "aus" ? "Aus." : "An, aber kein Name eingetragen.";
+    else if (d.state === "live") t = d.user + " ist live: " + d.viewers + " Zuschauer. Seit dem Start " + d.comments + " Chatnachrichten und " + d.gifts + " Geschenke übernommen. Letzte Abfrage vor " + d.ago + " s.";
+    else if (d.state === "offline") t = d.user + " ist gerade nicht live" + (d.error ? " (" + d.error + ")" : "") + ".";
+    else t = "Problem bei der Abfrage: " + (d.error || d.state);
+    $("yn-info").textContent = t;
+  } catch (e) { /* Server weg */ }
+}
+ynInfo();
+setInterval(ynInfo, 3000);
 </script>
 </body>
 </html>

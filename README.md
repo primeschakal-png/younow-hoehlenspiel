@@ -16,6 +16,8 @@ Einstellungen: `http://localhost:8000/einstellungen` (nur auf diesem PC erreichb
 
 Ohne Chat wird die Abstimmungszeit nach einer Minute Stille stetig kürzer, bis sie nach `IDLE_MINUTES` bei `IDLE_VOTE_SECONDS` ankommt. Hat die Figur dann schon selbst entschieden, geht sie nach 3 Sekunden los. Das Lager dauert höchstens `CAMP_MAX_MINUTES`, danach erkundet sie mindestens `CAMP_PAUSE_MINUTES` allein weiter.
 
+YouNow: Auf der Einstellungsseite unter „YouNow“ einschalten und den Namen des Streams eintragen. Der Server liest dann alle paar Sekunden die öffentliche Stream-Info von YouNow: Chat und Befehle gehen direkt ins Spiel, Geschenke werden zu Zusatzstimmen bei der Abstimmung (Bestechung). Ein Browser oder Userscript ist dafür nicht nötig.
+
 Zuschauer können die Figur mit `!sag <Text>` ansprechen (pro Zuschauer höchstens alle 30 Sekunden).
 
 Für OBS: Browserquelle mit `http://localhost:8000/`, Größe 1280 x 720 (ohne Test-Chat). Die Grafik wird doppelt vergrößert, mit `?zoom=1` oder `?zoom=3` an der Adresse lässt sich das ändern. In der Stadt folgt das Licht der Uhrzeit des PCs (Abendrot, Nacht mit Lichtkreis um die Figur), zum Ausprobieren `?stunde=22` an die Adresse hängen.

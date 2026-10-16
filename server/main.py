@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game import Game  # noqa: E402
 from llm import LLMClient  # noqa: E402
 import settings  # noqa: E402
+from younow import YouNowPoller  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OVERLAY = ROOT / "overlay"
@@ -99,8 +100,37 @@ async def llm_worker(app):
             await asyncio.sleep(1)
 
 
+async def younow_loop(app):
+    game = app["game"]
+    poller = app["younow"]
+    while True:
+        try:
+            if poller.enabled:
+                await poller.poll_once(game.on_chat, game.on_gift)
+                await broadcast(game.flush())
+        except Exception as exc:  # darf nie sterben
+            print("Fehler bei der YouNow-Abfrage:", repr(exc))
+        await asyncio.sleep(poller.interval if poller.enabled else 2)
+
+
+async def younow_status(request):
+    local_only(request)
+    st = dict(request.app["younow"].status)
+    st["ago"] = round(time.time() - st["last_ok"]) if st.get("last_ok") else None
+    st["user"] = request.app["younow"].user
+    return web.json_response(st)
+
+
+def apply_all(app, values):
+    settings.apply(values, app["game"], app["llm"])
+    app["younow"].configure(values.get("YOUNOW_ENABLED", "0") == "1", values.get("YOUNOW_USER", ""),
+                            settings.num(values, "YOUNOW_POLL_SECONDS", 3))
+
+
 async def on_startup(app):
     await app["llm"].start()
+    await app["younow"].start()
+    app["younow_task"] = asyncio.create_task(younow_loop(app))
     app["loop_task"] = asyncio.create_task(game_loop(app))
     app["llm_task"] = asyncio.create_task(llm_worker(app))
 
@@ -108,7 +138,9 @@ async def on_startup(app):
 async def on_cleanup(app):
     app["loop_task"].cancel()
     app["llm_task"].cancel()
+    app["younow_task"].cancel()
     await app["llm"].close()
+    await app["younow"].close()
     for ws in list(clients):
         await ws.close()
 
@@ -140,7 +172,7 @@ async def settings_post(request):
         return web.json_response({"ok": False, "errors": errors}, status=400)
     game = request.app["game"]
     old_step = game.step_seconds
-    settings.apply(values, game, request.app["llm"])
+    apply_all(request.app, values)
     restart = [k for k, f in settings.FIELD.items() if not f[5] and values.get(k) != before.get(k)]
     game.emit({"type": "audio", **game.audio})
     if game.step_seconds != old_step:
@@ -230,7 +262,8 @@ def make_app():
     app = web.Application(middlewares=[no_cache])
     app["game"] = Game()
     app["llm"] = LLMClient("http://127.0.0.1:8080/v1", "local")
-    settings.apply(VALUES, app["game"], app["llm"])
+    app["younow"] = YouNowPoller()
+    apply_all(app, VALUES)
     # erste Karte neu, damit Kartengröße und Sichtweite aus den Einstellungen gelten
     app["game"].depth = 0
     app["game"].outbox.clear()
@@ -242,6 +275,7 @@ def make_app():
     app.router.add_post("/api/action", settings_action)
     app.router.add_post("/api/younow/raw", younow_raw)
     app.router.add_get("/api/younow/raw", younow_raw_info)
+    app.router.add_get("/api/younow/status", younow_status)
     app.router.add_get("/api/younow/raw.jsonl", younow_raw_download)
     app.router.add_get("/ws", ws_handler)
     app.router.add_static("/static/", OVERLAY)

@@ -72,6 +72,12 @@ def area_for(depth):
     return {"key": found[1], "name": found[2], "where": found[3]}
 
 
+LABEL_TEXT = {"links": "Links", "rechts": "Rechts", "geradeaus": "Geradeaus", "zurueck": "Zurück"}
+
+def de_num(x):
+    return f"{x:g}".replace(".", ",")
+
+
 SAY_COOLDOWN = 30          # Sekunden zwischen zwei !sag-Antworten an denselben Zuschauer
 LLM_STALE = 20             # Kommentare, die so lange warten, sind nicht mehr aktuell
 
@@ -121,6 +127,8 @@ class Game:
         self.llm_ids = itertools.count(1)
         self.vote_ids = itertools.count(1)
         self.say_cooldown = {}
+        self.bribes = {}                 # Zuschauer -> Zusatzstimmen für die laufende oder nächste Abstimmung
+        self.likes_per_vote = 1000       # so viele Likes Geschenkwert ergeben eine Zusatzstimme
         self.recent = []
         self.hero_id = 1
         self.hall = []
@@ -896,9 +904,9 @@ class Game:
 
     def _counts(self):
         counts = {l: 0 for l in self.vote["labels"]}
-        for label in self.vote["votes"].values():
-            counts[label] += 1
-        return counts
+        for user, label in self.vote["votes"].items():
+            counts[label] += 1 + self.bribes.get(user, 0)
+        return {l: round(c, 1) for l, c in counts.items()}
 
     def _end_vote(self):
         counts = self._counts()
@@ -922,6 +930,8 @@ class Game:
             if llm and llm["wahl"] and llm["wahl"] != choice:
                 self.say(llm["wenn_chat_anders"])
         voters = [u for u, l in self.vote["votes"].items() if l == choice]
+        for u in self.vote["votes"]:
+            self.bribes.pop(u, None)      # eingesetzte Bestechung ist verbraucht
         self.last_decision = {"source": "chat" if total else "self", "voters": voters, "label": choice}
         d = self.vote["options"][choice]
         self.emit({"type": "vote_end", "choice": choice, "reason": reason, "counts": counts})
@@ -971,5 +981,35 @@ class Game:
         word = text.split()[0].lower()
         label = COMMANDS.get(word)
         if label and label in self.vote["options"]:
+            changed = self.vote["votes"].get(user) != label
             self.vote["votes"][user] = label
+            if changed and self.bribes.get(user):
+                self._announce_bribe(user, label)
             self.emit({"type": "vote_update", "counts": self._counts()})
+
+    # ---------- Geschenke und Bestechung ----------
+
+    def on_gift(self, user, gift, likes):
+        """Ein Geschenk aus dem Stream. Der Wert in Likes wird zu Zusatzstimmen für den Schenkenden,
+        bei der laufenden Abstimmung sofort, sonst bei der nächsten."""
+        user = (user or "").strip()[:30] or "Gast"
+        self.last_chat = time.monotonic()
+        extra = round(max(0.5, likes / max(1, self.likes_per_vote)), 1)
+        self.bribes[user] = round(self.bribes.get(user, 0) + extra, 1)
+        self.emit({"type": "chat", "user": user, "text": f"schenkt {gift}" + (f" ({likes:,} Likes)".replace(",", ".") if likes else "")})
+        self.emit({"type": "gift", "user": user, "gift": gift, "likes": likes, "extra": extra})
+        c = self.character
+        c.trust_users[user] = max(-1.0, min(1.0, c.trust_users.get(user, 0.0) + 0.15))
+        self._archetype_changed(c.on_chat(user))
+        if self.state == "camp":
+            self._leave_camp(f"Ein Geschenk! {self.hero.name} springt auf.")
+        if self.state == "voting" and user in self.vote["votes"]:
+            self._announce_bribe(user, self.vote["votes"][user])
+            self.emit({"type": "vote_update", "counts": self._counts()})
+        else:
+            self.log(f"{user} schenkt {gift}. Die nächste Stimme von {user} zählt {de_num(1 + self.bribes[user])}-fach.")
+        self.comment(f"Der Zuschauer {user} hat dir gerade das Geschenk {gift} gemacht. Bedank dich kurz bei {user}.", prio=2)
+
+    def _announce_bribe(self, user, label):
+        total = 1 + self.bribes.get(user, 0)
+        self.log(f"Bestechung! {user} legt {de_num(total)} Stimmen auf {LABEL_TEXT.get(label, label)}.")

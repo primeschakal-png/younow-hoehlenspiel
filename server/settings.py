@@ -18,6 +18,7 @@ GROUPS = [
     ("lager", "Lager und Leerlauf"),
     ("balance", "Überleben und Balance"),
     ("karte", "Karte"),
+    ("younow", "YouNow"),
     ("ton", "Ton"),
     ("llm", "LLM"),
     ("llama", "llama-server (start.bat)"),
@@ -57,6 +58,12 @@ FIELDS = [
     ("MAP_CELLS_W", "karte", "int", "Kartenbreite (Kreuzungen)", "Gilt ab der nächsten Ebene.", True),
     ("MAP_CELLS_H", "karte", "int", "Kartenhöhe (Kreuzungen)", "Gilt ab der nächsten Ebene.", True),
     ("REVEAL_RADIUS", "karte", "int", "Sichtweite (Kacheln)", "So weit deckt die Figur die Karte auf.", True),
+    ("YOUNOW_ENABLED", "younow", "bool", "YouNow-Chat lesen",
+     "Fragt die öffentliche Stream-Info ab: Chat, Befehle und Geschenke kommen direkt ins Spiel, ohne Browser.", True),
+    ("YOUNOW_USER", "younow", "text", "YouNow-Name des Streams", "Der Benutzername, unter dem gestreamt wird.", True),
+    ("YOUNOW_POLL_SECONDS", "younow", "float", "Abfrage alle (Sekunden)", "Kleiner heißt schnellere Reaktion, 3 ist ein guter Wert.", True),
+    ("BRIBE_LIKES_PER_VOTE", "younow", "int", "Likes pro Zusatzstimme",
+     "Geschenkwert in Likes, der eine zusätzliche Stimme ergibt. Ein Geschenk für 2.500 Likes ist bei 1000 also 2,5 Stimmen wert.", True),
     ("SOUND_ENABLED", "ton", "bool", "Ton an", "Musik und Geräusche im Overlay. In OBS bei der Browserquelle „Audio über OBS steuern“ anhaken.", True),
     ("MUSIC_VOLUME", "ton", "int", "Musik (0 bis 100)", "Im Lager und nachts automatisch leiser.", True),
     ("SFX_VOLUME", "ton", "int", "Geräusche (0 bis 100)", "Schritte, Kampf, Truhen, Abstimmung.", True),
@@ -175,6 +182,7 @@ def apply(values, game, llm):
             if name in game_mod.BAL:
                 v = num(values, key, game_mod.BAL[name])
                 game_mod.BAL[name] = int(v) if key in FIELD and FIELD[key][2] == "int" else v
+    game.likes_per_vote = max(1, int(num(values, "BRIBE_LIKES_PER_VOTE", 1000)))
     game.audio = {
         "enabled": values.get("SOUND_ENABLED", "1") == "1",
         "music": max(0.0, min(1.0, num(values, "MUSIC_VOLUME", 35) / 100)),

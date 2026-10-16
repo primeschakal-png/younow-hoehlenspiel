@@ -27,7 +27,9 @@ Erste lauffähige Version ohne LLM und ohne YouNow.
 - [ ] Eine Stimme pro Zuschauer, umentscheiden erlaubt (4)
 - [ ] Live-Balken im Overlay
 - [x] Gleichstand und fehlende Stimmen (ohne Stimmen: Gespür nach Hinweisen und Not, bis Etappe 5 das LLM übernimmt)
-- [ ] Bestechung als Zusatzgewicht, Gegenbieten, öffentliche Nennung (5)
+- [x] Bestechung als Zusatzgewicht, Gegenbieten, öffentliche Nennung (5): Geschenkwert in Likes wird zu Zusatzstimmen
+      für die Stimme des Schenkenden (BRIBE_LIKES_PER_VOTE), Ansage im Overlay
+- [ ] Einzelne Likes zuordnen: die öffentliche Stream-Info nennt nur Geschenke mit Namen, keine einzelnen Likes
 
 ## 4. Charakter-System
 
@@ -50,7 +52,8 @@ Erste lauffähige Version ohne LLM und ohne YouNow.
 - [ ] Im laufenden Stream prüfen: Aufbau von Chat, Geschenken und Likes. Weg: YouNow-WebSocket mitschneiden
       (`userscript/younow-mitschnitt.user.js`, Rohdaten in `logs/younow_raw.jsonl`), dann Parser bauen
 - [ ] Klären: Wird angezeigt, WER geliked hat?
-- [ ] Userscript (Tampermonkey) mit automatischer Wiederverbindung
+- [x] Chat und Geschenke ohne Browser: Server fragt die öffentliche Stream-Info ab (`server/younow.py`)
+- [ ] Im echten Stream prüfen: Verzögerung des Chats, Anzahl der Kommentare pro Abruf, Geschenktexte
 - [ ] Chat-Quelle austauschbar halten (später Playwright)
 
 ## 7. Speicherstand, Ehrenhalle und Robustheit

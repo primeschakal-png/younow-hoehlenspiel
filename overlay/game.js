@@ -1160,7 +1160,7 @@ function renderVote(options, counts, winner) {
     row.innerHTML =
       '<div class="vote-label">' + LABELS[opt] + " <small>" + COMMAND[opt] + "</small></div>" +
       '<div class="vote-bar"><div class="vote-fill"></div></div>' +
-      '<div class="vote-count">' + c + "</div>";
+      '<div class="vote-count">' + String(c).replace(".", ",") + "</div>";
     bars.appendChild(row);
     if (currentHints[opt]) {
       const hint = document.createElement("div");
@@ -1323,6 +1323,10 @@ function handle(msg) {
       audio.play("coins");
       audio.play("growl", 500);
       showLog(audio.enabled ? (scene.sound.locked ? "Testton: Der Browser blockiert den Ton, einmal ins Bild klicken." : "Testton gespielt.") : "Testton: Ton ist in den Einstellungen aus.");
+      break;
+    case "gift":
+      audio.play("coins");
+      audio.play("coins", 300);
       break;
     case "audio":
       audio.configure(msg);
