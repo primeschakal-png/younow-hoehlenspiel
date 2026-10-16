@@ -20,3 +20,16 @@
   https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental
   Dateien: `dcss/monster/*.png`, `dcss/item/*.png`, `dcss/unterwelt.png` (zusammengestellt mit
   `tools/build_unterwelt.py`, Böden teils aufgehellt)
+
+## Ton
+
+Alle Klänge CC0 (gemeinfrei), Nennung erwünscht, aber nicht nötig.
+
+- **RPG Sounds** von Kenney (www.kenney.nl), https://opengameart.org/content/50-rpg-sound-effects
+  Dateien: `audio/sfx/` außer `monster*.ogg`
+- **Monster SFX Pack** von Ogrebane, https://opengameart.org/content/monster-sound-effects-pack
+  Dateien: `audio/sfx/monster*.ogg` (aus WAV umgewandelt)
+- **The Old Tower Inn** von RandomMind, https://opengameart.org/content/medieval-the-old-tower-inn
+  Datei: `audio/music/stadt.ogg` (Stille am Anfang und Ende gekürzt, umgewandelt)
+- **Loopable dungeon ambience** von JaggedStone, https://opengameart.org/content/loopable-dungeon-ambience
+  Datei: `audio/music/unterwelt.ogg`

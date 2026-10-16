@@ -142,6 +142,7 @@ async def settings_post(request):
     old_step = game.step_seconds
     settings.apply(values, game, request.app["llm"])
     restart = [k for k, f in settings.FIELD.items() if not f[5] and values.get(k) != before.get(k)]
+    game.emit({"type": "audio", **game.audio})
     if game.step_seconds != old_step:
         game.emit({"type": "step", "step": game.step_seconds})
     await broadcast(game.flush())

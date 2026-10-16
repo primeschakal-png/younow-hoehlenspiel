@@ -183,6 +183,7 @@ let ws = null;
 let scene = null;
 let pending = [];
 let voteEndsAt = 0;
+let lastDepth = null;
 let voteTimer = null;
 let voteHideTimer = null;
 let logTimer = null;
@@ -325,6 +326,120 @@ function makeTextures(sc) {
   g.destroy();
 }
 
+// ---------- Ton: Musik je Gebiet, Geräusche zu Ereignissen ----------
+// Kenney RPG Sounds (CC0), Monster SFX Pack von Ogrebane (CC0),
+// Musik: "The Old Tower Inn" von RandomMind (CC0), "Loopable dungeon ambience" von JaggedStone (CC0)
+const SFX = {
+  step: ["footstep00", "footstep01", "footstep02", "footstep03", "footstep04"],
+  voteStart: ["bookFlip1"],
+  voteEnd: ["bookClose"],
+  draw: ["drawKnife1", "drawKnife2"],
+  hit: ["knifeSlice", "knifeSlice2", "chop"],
+  growl: ["monster1", "monster6", "monster8", "monster10"],
+  pain: ["monster2", "monster3", "monster4", "monster7", "monster9"],
+  chest: ["creak1", "creak2"],
+  coins: ["handleCoins", "handleCoins2"],
+  bag: ["handleSmallLeather"],
+  trap: ["metalClick"],
+  trapSnap: ["metalLatch"],
+  camp: ["cloth1"],
+  cook: ["metalPot1"],
+  stairs: ["doorOpen_2"],
+  death: ["dropLeather"],
+};
+// Lautstärke je Geräuschart (zusätzlich zum Regler)
+const SFX_GAIN = { step: 0.25, voteStart: 0.5, voteEnd: 0.4, growl: 0.55, pain: 0.5, coins: 0.7, bag: 0.6 };
+const MUSIC = { stadt: "music_stadt", unter: "music_unterwelt" };
+
+const audio = {
+  scene: null,
+  enabled: true,
+  music: 0.35,        // 0 bis 1
+  sfx: 0.7,
+  current: null,      // laufende Musik
+  currentKey: null,
+  quiet: false,       // Lager oder Nacht: Musik leiser
+  stepCount: 0,
+
+  init(scene) {
+    this.scene = scene;
+    const hint = document.getElementById("sound-hint");
+    const update = () => hint && hint.classList.toggle("hidden", !(this.enabled && scene.sound.locked));
+    update();
+    scene.sound.on("unlocked", () => { update(); this.playMusic(this.wantKey, true); });
+    document.addEventListener("pointerdown", update);
+  },
+
+  configure(cfg) {
+    if (!cfg) return;
+    this.enabled = cfg.enabled !== false;
+    if (typeof cfg.music === "number") this.music = cfg.music;
+    if (typeof cfg.sfx === "number") this.sfx = cfg.sfx;
+    if (!this.enabled) this.stopMusic();
+    else this.playMusic(this.wantKey, true);
+    const hint = document.getElementById("sound-hint");
+    if (hint && this.scene) hint.classList.toggle("hidden", !(this.enabled && this.scene.sound.locked));
+  },
+
+  play(kind, delay = 0) {
+    if (!this.enabled || !this.scene || this.sfx <= 0) return;
+    const list = SFX[kind];
+    if (!list) return;
+    const key = "sfx_" + list[Math.floor(Math.random() * list.length)];
+    if (!this.scene.cache.audio.exists(key)) return;
+    const go = () => this.scene.sound.play(key, {
+      volume: this.sfx * (SFX_GAIN[kind] || 0.8),
+      rate: 0.94 + Math.random() * 0.12,   // etwas Abwechslung
+    });
+    if (delay) this.scene.time.delayedCall(delay, go);
+    else go();
+  },
+
+  step() {
+    // jeder zweite Schritt, sonst klappert es zu sehr
+    this.stepCount++;
+    if (this.stepCount % 2 === 0) this.play("step");
+  },
+
+  musicVolume() {
+    return this.music * (this.quiet ? 0.45 : 1);
+  },
+
+  playMusic(key, force) {
+    this.wantKey = key;
+    if (!key || !this.enabled || !this.scene || this.music <= 0) {
+      this.stopMusic();
+      return;
+    }
+    if (!this.scene.cache.audio.exists(key)) return;
+    if (this.currentKey === key && this.current && !force) return;
+    if (this.currentKey === key && this.current && this.current.isPlaying) {
+      this.scene.tweens.add({ targets: this.current, volume: this.musicVolume(), duration: 1500 });
+      return;
+    }
+    this.stopMusic();
+    const snd = this.scene.sound.add(key, { loop: true, volume: 0 });
+    snd.play();
+    this.scene.tweens.add({ targets: snd, volume: this.musicVolume(), duration: 3000 });
+    this.current = snd;
+    this.currentKey = key;
+  },
+
+  stopMusic() {
+    if (!this.current) return;
+    const old = this.current;
+    this.current = null;
+    this.currentKey = null;
+    this.scene.tweens.add({ targets: old, volume: 0, duration: 2000, onComplete: () => old.destroy() });
+  },
+
+  setQuiet(q) {
+    if (this.quiet === q) return;
+    this.quiet = q;
+    if (this.current) this.scene.tweens.add({ targets: this.current, volume: this.musicVolume(), duration: 2000 });
+  },
+};
+
 class CaveScene extends Phaser.Scene {
   constructor() {
     super("cave");
@@ -348,12 +463,20 @@ class CaveScene extends Phaser.Scene {
     this.load.spritesheet("herosheet", "assets/characters/hero.png", { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet("unter", "assets/dcss/unterwelt.png", { frameWidth: 32, frameHeight: 32 });
     this.load.json("unterwelt", "assets/dcss/unterwelt.json");
+    for (const list of Object.values(SFX)) {
+      for (const name of list) {
+        if (!this.cache.audio.exists("sfx_" + name)) this.load.audio("sfx_" + name, "assets/audio/sfx/" + name + ".ogg");
+      }
+    }
+    this.load.audio("music_stadt", "assets/audio/music/stadt.ogg");
+    this.load.audio("music_unterwelt", "assets/audio/music/unterwelt.ogg");
     for (const key of new Set(Object.values(MONSTER_KEYS))) this.load.image("mon_" + key, "assets/dcss/monster/" + key + ".png");
     for (const key of ITEM_KEYS) this.load.image("item_" + key, "assets/dcss/item/" + key + ".png");
   }
 
   create() {
     makeTextures(this);
+    audio.init(this);
     // Farbton der Tageszeit: großes Rechteck, das der Figur folgt und das Bild darunter einfärbt
     this.ambient = this.add.rectangle(0, 0, 8000, 8000, 0xffffff, 0).setDepth(14)
       .setBlendMode(Phaser.BlendModes.MULTIPLY).setVisible(false);
@@ -704,11 +827,15 @@ class CaveScene extends Phaser.Scene {
   // unter Tage zählt nur das Gebiet, in der Stadt die Tageszeit
   applyAmbient() {
     if (this.under) {
+      this.night = false;
+      audio.setQuiet(this.camping);
       this.ambient.setVisible(false);
       this.setDarkness(this.under.dark);
       return;
     }
     const t = daytime(currentHour());
+    this.night = t.dark > 0.3;
+    audio.setQuiet(this.camping || this.night);
     this.ambient.setFillStyle(t.color, t.tint).setVisible(t.tint > 0.01);
     this.setDarkness(t.dark > 0.01 ? t.dark : 0);
   }
@@ -1167,6 +1294,10 @@ function handle(msg) {
   }
   switch (msg.type) {
     case "state":
+      if (lastDepth !== null && msg.depth > lastDepth) audio.play("stairs");
+      lastDepth = msg.depth;
+      audio.configure(msg.audio);
+      audio.playMusic(msg.area && msg.area.key !== "stadt" ? MUSIC.unter : MUSIC.stadt);
       el("depth").textContent = "Ebene " + msg.depth + (msg.area ? " · " + msg.area.name : "");
       renderStats(msg.hero);
       lastArchetype = null;
@@ -1185,41 +1316,61 @@ function handle(msg) {
       renderCharacter(msg);
       break;
     case "entity_remove":
+      if (scene.entities.has(msg.id) && scene.entities.get(msg.id).kind === "chest") audio.play("chest");
       scene.removeEntity(msg.id);
+      break;
+    case "audio":
+      audio.configure(msg);
       break;
     case "step":
       scene.step = msg.step;
       break;
     case "trap":
+      audio.play("trap");
+      audio.play("trapSnap", 250);
       scene.showTrap(msg.x, msg.y);
       break;
     case "loot":
+      msg.items.slice(0, 4).forEach((it, i) => audio.play(it === "gold" ? "coins" : "bag", 300 + i * 220));
       scene.showLoot(msg.items);
       break;
     case "dice":
       showDice(msg);
-      if (msg.label.startsWith("Kampf")) scene.resolveFight(msg.success);
+      if (msg.label.startsWith("Kampf")) {
+        scene.resolveFight(msg.success);
+        audio.play("growl");
+        audio.play("draw", 250);
+        audio.play("hit", 650);
+        if (msg.success) audio.play("pain", 900);
+      }
       scene.action(msg.label.startsWith("Kampf") ? "slash" : "emote");
       break;
     case "anim":
       scene.action(msg.name);
       break;
     case "camp":
+      if (msg.active && !scene.camping) audio.play("camp");
+      if (msg.active && msg.text && msg.text.startsWith("kocht")) audio.play("cook");
       scene.setCamp(msg);
+      audio.setQuiet(scene.camping || scene.night);
       break;
     case "say":
       scene.say(msg.text, msg.to);
       break;
     case "death":
+      audio.play("death");
+      audio.play("pain", 200);
       showDeath(msg);
       break;
     case "reveal":
       scene.reveal(msg.tiles, false);
       break;
     case "pos":
+      audio.step();
       scene.moveFigure(msg.pos, msg.facing, false);
       break;
     case "vote_start":
+      audio.play("voteStart");
       startVote(msg.options, msg.seconds, {}, msg.hints);
       break;
     case "vote_update":
@@ -1227,6 +1378,7 @@ function handle(msg) {
       if (typeof msg.remaining === "number") voteEndsAt = Date.now() + msg.remaining * 1000;
       break;
     case "vote_end":
+      audio.play("voteEnd");
       endVote(msg.choice, msg.reason, msg.counts);
       break;
     case "log":

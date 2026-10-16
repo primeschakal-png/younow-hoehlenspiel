@@ -111,6 +111,7 @@ class Game:
         self.idle_seconds = idle_minutes * 60
         self.camp_max_seconds = camp_max_minutes * 60
         self.camp_pause_seconds = camp_pause_minutes * 60
+        self.audio = {"enabled": True, "music": 0.35, "sfx": 0.7}
         self.cells_w = cells_w
         self.cells_h = cells_h
         self.reveal_radius = reveal_radius
@@ -353,6 +354,7 @@ class Game:
             "hero": self.hero.stats(),
             "entities": self.visible_entities(),
             "camp": self._camp_info(),
+            "audio": self.audio,
             "dead": self.state == "dead",
             "hall": self.hall[-5:],
             "character": self.character.info(),
