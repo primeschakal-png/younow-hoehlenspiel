@@ -26,8 +26,9 @@ HINTS = {
 }
 
 
-def counts_for_depth(depth):
-    return {
+def counts_for_depth(depth, cells):
+    """Anzahlen sind auf 375 Zellen abgestimmt und werden auf die Kartengröße umgerechnet."""
+    base = {
         "chest": max(3, 8 - depth),
         "spring": max(2, 6 - depth),
         "mushroom": max(2, 7 - depth),
@@ -35,6 +36,8 @@ def counts_for_depth(depth):
         "monster": 3 + depth * 2,
         "trap": 2 + depth,
     }
+    f = cells / 375
+    return {k: (max(1, round(v * f)) if v else 0) for k, v in base.items()}
 
 
 def populate(maze, depth, rnd):
@@ -45,7 +48,7 @@ def populate(maze, depth, rnd):
     ]
     rnd.shuffle(free)
     entities = {}
-    for kind, n in counts_for_depth(depth).items():
+    for kind, n in counts_for_depth(depth, maze.cw * maze.ch).items():
         for _ in range(n):
             if not free:
                 return entities

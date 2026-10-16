@@ -1,10 +1,15 @@
-"""Labyrinth-Generator.
+"""Labyrinth-Generator für die Stadt.
 
-Gerüst ist ein Zellen-Labyrinth (Recursive Backtracker). Daraus entsteht ein
-Kachelraster mit Wänden (1) und Boden (0). Zusätzliche Durchbrüche erzeugen
-Schleifen und damit mehr Kreuzungen, Grotten geben Höhlenoptik.
-Die Verbindungen zwischen Zellen werden immer aus dem Kachelraster gelesen,
-damit Grotten und Durchbrüche automatisch berücksichtigt werden.
+Gerüst ist ein Zellen-Labyrinth (Recursive Backtracker) mit zusätzlichen
+Durchbrüchen für mehr Kreuzungen. Daraus entsteht eine Kachelkarte:
+- jede Zelle ist ein Gassenstück von GASSE x GASSE Kacheln,
+- zwischen den Zellen liegen Häuserblöcke von BLOCK Kacheln Dicke,
+- eine offene Verbindung zwischen zwei Zellen ist ein Gassenstück durch den Block,
+- Plätze entstehen, wo vier Zellen um einen Block herum verbunden werden und der
+  Block dazwischen wegfällt.
+
+Positionen der Figur und von Gegenständen sind Kachelkoordinaten als Kommazahl
+(Mitte des Gassenstücks), der Client rechnet sie mal Kachelgröße.
 """
 
 import random
@@ -15,88 +20,122 @@ LEFT = {"N": "W", "W": "S", "S": "E", "E": "N"}
 RIGHT = {"N": "E", "E": "S", "S": "W", "W": "N"}
 BACK = {"N": "S", "S": "N", "E": "W", "W": "E"}
 
+GASSE = 2   # Breite einer Gasse in Kacheln
+BLOCK = 4   # Dicke eines Häuserblocks in Kacheln (2 Reihen Dach, 2 Reihen Fassade)
+STEP = GASSE + BLOCK
+
 
 class Maze:
-    def __init__(self, cells_w, cells_h, seed, grottos=4, loop_chance=0.10):
+    def __init__(self, cells_w, cells_h, seed, plazas=3, loop_chance=0.10):
         self.cw = cells_w
         self.ch = cells_h
-        self.tw = cells_w * 2 + 1
-        self.th = cells_h * 2 + 1
+        self.tw = BLOCK + cells_w * STEP
+        self.th = BLOCK + cells_h * STEP
         self.seed = seed
         self.rnd = random.Random(seed)
-        self.tiles = [[1] * self.tw for _ in range(self.th)]
+        self.links = set()          # (zelle, richtung) für jede offene Verbindung, beide Richtungen
+        self.plazas = []            # (x, y, b, h) in Kacheln: freie Platzmitte für Brunnen und Deko
         self._carve()
         self._add_loops(loop_chance)
-        self._add_grottos(grottos)
+        self._add_plazas(plazas)
+        self.tiles = self._build_tiles()
         self.start = (self.rnd.randrange(self.cw), self.rnd.randrange(self.ch))
         self.stairs = self._farthest(self.start)
 
+    # ---------- Geometrie ----------
+
+    @staticmethod
+    def origin(cell):
+        """Linke obere Kachel des Gassenstücks einer Zelle."""
+        return (BLOCK + cell[0] * STEP, BLOCK + cell[1] * STEP)
+
     @staticmethod
     def center(cell):
-        return (cell[0] * 2 + 1, cell[1] * 2 + 1)
+        """Mitte des Gassenstücks in Kachelkoordinaten (Kommazahl)."""
+        ox, oy = Maze.origin(cell)
+        return (ox + GASSE / 2, oy + GASSE / 2)
 
     def in_cells(self, x, y):
         return 0 <= x < self.cw and 0 <= y < self.ch
 
-    def is_floor(self, tx, ty):
-        return 0 <= tx < self.tw and 0 <= ty < self.th and self.tiles[ty][tx] == 0
+    def neighbor(self, cell, d):
+        dx, dy = DIRS[d]
+        return (cell[0] + dx, cell[1] + dy)
+
+    def _link(self, cell, d):
+        n = self.neighbor(cell, d)
+        self.links.add((cell, d))
+        self.links.add((n, BACK[d]))
+
+    def is_open(self, cell, d):
+        return (cell, d) in self.links
+
+    def exits(self, cell):
+        return [d for d in DIRS if self.is_open(cell, d)]
+
+    # ---------- Erzeugung ----------
 
     def _carve(self):
         rnd = self.rnd
         start = (rnd.randrange(self.cw), rnd.randrange(self.ch))
         visited = {start}
         stack = [start]
-        sx, sy = self.center(start)
-        self.tiles[sy][sx] = 0
         while stack:
             x, y = stack[-1]
-            nbrs = []
-            for d, (dx, dy) in DIRS.items():
-                nx, ny = x + dx, y + dy
-                if self.in_cells(nx, ny) and (nx, ny) not in visited:
-                    nbrs.append((d, (nx, ny)))
+            nbrs = [(d, (x + dx, y + dy)) for d, (dx, dy) in DIRS.items()
+                    if self.in_cells(x + dx, y + dy) and (x + dx, y + dy) not in visited]
             if not nbrs:
                 stack.pop()
                 continue
             d, nxt = rnd.choice(nbrs)
-            dx, dy = DIRS[d]
-            tx, ty = self.center((x, y))
-            self.tiles[ty + dy][tx + dx] = 0
-            self.tiles[ty + 2 * dy][tx + 2 * dx] = 0
+            self._link((x, y), d)
             visited.add(nxt)
             stack.append(nxt)
 
     def _add_loops(self, chance):
         for y in range(self.ch):
             for x in range(self.cw):
-                tx, ty = self.center((x, y))
-                if x + 1 < self.cw and self.tiles[ty][tx + 1] == 1 and self.rnd.random() < chance:
-                    self.tiles[ty][tx + 1] = 0
-                if y + 1 < self.ch and self.tiles[ty + 1][tx] == 1 and self.rnd.random() < chance:
-                    self.tiles[ty + 1][tx] = 0
+                for d in ("E", "S"):
+                    n = self.neighbor((x, y), d)
+                    if self.in_cells(*n) and not self.is_open((x, y), d) and self.rnd.random() < chance:
+                        self._link((x, y), d)
 
-    def _add_grottos(self, count):
-        for _ in range(count):
-            cx, cy = self.center((self.rnd.randrange(self.cw), self.rnd.randrange(self.ch)))
-            for ty in range(cy - 1, cy + 2):
-                for tx in range(cx - 1, cx + 2):
-                    if 1 <= tx < self.tw - 1 and 1 <= ty < self.th - 1:
-                        self.tiles[ty][tx] = 0
+    def _add_plazas(self, count):
+        used = set()
+        tries = 0
+        while len(self.plazas) < count and tries < 200:
+            tries += 1
+            x, y = self.rnd.randrange(self.cw - 1), self.rnd.randrange(self.ch - 1)
+            cells = {(x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1)}
+            if cells & used:
+                continue
+            used |= cells
+            self._link((x, y), "E")
+            self._link((x, y + 1), "E")
+            self._link((x, y), "S")
+            self._link((x + 1, y), "S")
+            ox, oy = self.origin((x, y))
+            self.plazas.append((ox + GASSE, oy + GASSE, BLOCK, BLOCK))
 
-    def is_open(self, cell, d):
-        dx, dy = DIRS[d]
-        nx, ny = cell[0] + dx, cell[1] + dy
-        if not self.in_cells(nx, ny):
-            return False
-        tx, ty = self.center(cell)
-        return self.tiles[ty + dy][tx + dx] == 0
+    def _build_tiles(self):
+        tiles = [[1] * self.tw for _ in range(self.th)]
 
-    def exits(self, cell):
-        return [d for d in DIRS if self.is_open(cell, d)]
+        def carve(x0, y0, w, h):
+            for ty in range(y0, y0 + h):
+                for tx in range(x0, x0 + w):
+                    tiles[ty][tx] = 0
 
-    def neighbor(self, cell, d):
-        dx, dy = DIRS[d]
-        return (cell[0] + dx, cell[1] + dy)
+        for y in range(self.ch):
+            for x in range(self.cw):
+                ox, oy = self.origin((x, y))
+                carve(ox, oy, GASSE, GASSE)
+                if self.is_open((x, y), "E"):
+                    carve(ox + GASSE, oy, BLOCK, GASSE)
+                if self.is_open((x, y), "S"):
+                    carve(ox, oy + GASSE, GASSE, BLOCK)
+        for (px, py, w, h) in self.plazas:
+            carve(px, py, w, h)
+        return tiles
 
     def _farthest(self, start):
         dist = {start: 0}
@@ -112,6 +151,9 @@ class Maze:
                     dist[n] = dist[c] + 1
                     q.append(n)
         return far
+
+    def is_floor(self, tx, ty):
+        return 0 <= tx < self.tw and 0 <= ty < self.th and self.tiles[ty][tx] == 0
 
     def rows(self):
         return ["".join("#" if t else "." for t in row) for row in self.tiles]

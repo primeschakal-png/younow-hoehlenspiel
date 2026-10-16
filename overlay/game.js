@@ -10,38 +10,41 @@ const LABELS = { links: "Links", geradeaus: "Geradeaus", rechts: "Rechts", zurue
 const COMMAND = { links: "!links", geradeaus: "!geradeaus", rechts: "!rechts", zurueck: "!zurueck" };
 const FACING_ANGLE = { N: 0, E: 90, S: 180, W: 270 };
 
-// Mage City Arcanos (Hyptosis, CC0): 8 Kacheln pro Zeile, Bildnummer = Zeile * 8 + Spalte
+// Mage City Arcanos (Hyptosis, CC0): 8 Kacheln pro Zeile, Bildnummer = Zeile * 8 + Spalte.
+// Alle Nummern laut assets/tiles/magecity.json
 const F = (row, col) => row * 8 + col;
+
+// Viertel je Ebene: ungerade = Marktviertel (Sandstein), gerade = verfallenes Viertel (grau, Moos)
 const THEMES = [
-  {   // ungerade Ebenen: Sandstein und Kopfsteinpflaster mit Rand
-    // Kachelnummern laut assets/tiles/magecity.json
-    floor: (n, e, s, w, x, y) => {
-      const r = hash(x, y);
-      return r < 0.2 ? 75 : r < 0.35 ? 76 : 81;             // drei nahtlose Innenflächen, keine Randsteine
-    },
-    face: () => 41,               // Sandsteinmauer unten Mitte, ohne Pfeiler
-    topFrame: () => 33,           // Sandsteinmauer oben Mitte, als Krone abgedunkelt
-    topTint: 0x8a7a66, rim: 0x3a2e22,
+  {
+    floor: (x, y) => { const r = hash(x, y); return r < 0.2 ? 75 : r < 0.35 ? 76 : 81; },
+    facade: { upper: { l: 32, m: 33, r: 34 }, lower: { l: 40, m: 41, r: 42 } },
+    roofs: ["brown", "brown", "brown", "moss"],
   },
-  {   // gerade Ebenen: graue Ziegel und heller Plattenweg
-    floor: (n, e, s, w, x, y) => {
-      const r = hash(x, y);
-      return r < 0.04 ? 328 : r < 0.12 ? 9 : r < 0.5 ? 330 : 1; // Platten, selten mit Unkraut oder Pfütze
-    },
-    face: () => 229,              // graue Ziegelmauer unten Mitte, ohne Schatten
-    topFrame: () => 221,          // graue Ziegelmauer Mitte, als Krone abgedunkelt
-    topTint: 0x76727e, rim: 0x25232a,
+  {
+    floor: (x, y) => { const r = hash(x, y); return r < 0.04 ? 328 : r < 0.12 ? 9 : r < 0.5 ? 330 : 1; },
+    facade: { upper: { l: 221, m: 221, r: 221 }, lower: { l: 229, m: 229, r: 229 } },
+    roofs: ["moss", "moss", "brown"],
   },
 ];
-// Gegenstände laut magecity.json: Bildnummern von oben nach unten (eine Spalte)
+
+// Dächer: je Zeile links, mitte, rechts
+const ROOFS = {
+  brown: { top: [184, 185, 186], mid: [192, 193, 194], eave: [200, 201, 202], midAlt: [187, 193, 193] },
+  moss: { top: [189, 190, 191], mid: [197, 198, 199], eave: [205, 206, 207], midAlt: [198, 198, 198] },
+};
+// Fenster: [obere Hälfte, untere Hälfte], liegen transparent auf der Fassade
+const WINDOWS = [[155, 163], [154, 162], [153, 161], [171, 179], [174, 182], [175, 183], [170, 178]];
+const DOORWAY = 326;   // dunkle Kachel als offener Hauseingang
+
+// Gegenstände: Bildnummern von oben nach unten (eine Spalte)
 const ENTITY_FRAMES = {
   shrine: [98, 106, 114],      // statue_antik, 1x3
   chest: [79],                 // Jutesack
   mushroom: [262],             // Kürbis
 };
-// Brunnen ist 2x2 groß, wird auf eine Kachel verkleinert gezeichnet
-const SPRING_FRAMES = [[22, 23], [30, 31]];
-const DECOR = [2, 3, 10, 11, 12, 333, 4, 85, 350];
+const SPRING_FRAMES = [[22, 23], [30, 31]];   // Brunnen 2x2
+const PLAZA_PLANTS = [16, 2, 3, 10, 11, 12];  // Ecken eines Platzes
 
 // LPC-Spritesheet: 64x64 je Bild, 13 Bilder pro Zeile, Richtungen je Animation in der Reihenfolge N, W, S, O
 const DIR_ROW = { N: 0, W: 1, S: 2, E: 3 };
@@ -97,18 +100,6 @@ function makeTextures(sc) {
     for (let i = 0; i < 6; i++) g.fillRect(rand(1, TILE - 4), rand(1, TILE - 4), 2, 2);
     g.generateTexture("floor" + v, TILE, TILE);
   }
-
-  // Kanten der Mauerkronen: heller Rand an den Seiten, an die Boden grenzt (N=1, E=2, W=8)
-  THEMES.forEach((t, ti) => {
-    for (let m = 1; m < 16; m++) {
-      g.clear();
-      g.fillStyle(t.rim, 0.6);          // dunkle, schmale Kante statt heller Streifen
-      if (m & 1) g.fillRect(0, 0, TILE, 2);
-      if (m & 2) g.fillRect(TILE - 2, 0, 2, TILE);
-      if (m & 8) g.fillRect(0, 0, 2, TILE);
-      g.generateTexture("rim" + ti + "_" + m, TILE, TILE);
-    }
-  });
 
   // Schatten auf dem Boden direkt unter einer Mauer, überall gleich
   g.clear();
@@ -262,61 +253,155 @@ class CaveScene extends Phaser.Scene {
     const theme = THEMES[ti];
     if (this.decor) this.decor.forEach((d) => d.img.destroy());
     this.decor = [];
-    const rims = [];
+    const overlays = [];
+
+    // Häuser: jede senkrechte Mauerfolge ist unten Fassade (2 Reihen), darüber Dach.
+    // Nebeneinanderliegende Spalten mit gleicher Ober- und Unterkante bilden eine Häuserzeile,
+    // die in Häuser von meist 3 Kacheln Breite geteilt wird.
+    const role = [];
+    for (let y = 0; y < s.th; y++) role.push(new Array(s.tw).fill(null));
+    const runAt = [];
+    for (let x = 0; x < s.tw; x++) {
+      let y = 0;
+      while (y < s.th) {
+        if (isFloor(x, y)) { y++; continue; }
+        const y0 = y;
+        while (y < s.th && !isFloor(x, y)) y++;
+        const y1 = y - 1;
+        const len = y1 - y0 + 1;
+        const facadeRows = isFloor(x, y1 + 1) ? Math.min(2, len) : 0;
+        const roofRows = len - facadeRows;
+        for (let yy = y0; yy <= y1; yy++) {
+          const k = yy - y0;
+          let r;
+          if (k >= roofRows) r = { kind: "facade", row: (k - roofRows === facadeRows - 1) ? "lower" : "upper" };
+          else if (k === 0) r = { kind: "roof", row: roofRows === 1 && facadeRows ? "eave" : "top" };
+          else if (k === roofRows - 1 && facadeRows) r = { kind: "roof", row: "eave" };
+          else r = { kind: "roof", row: "mid" };
+          r.key = y0 + ":" + y1;
+          role[yy][x] = r;
+        }
+      }
+    }
+    // Häuser waagerecht zuschneiden
+    const houseOf = [];
+    for (let y = 0; y < s.th; y++) houseOf.push(new Array(s.tw).fill(null));
+    for (let y = 0; y < s.th; y++) {
+      let x = 0;
+      while (x < s.tw) {
+        const r = role[y][x];
+        if (!r || r.done) { x++; continue; }
+        // Zeile nur einmal pro Häuserzeile bearbeiten (an der Oberkante)
+        const y0 = Number(r.key.split(":")[0]);
+        if (y !== y0) { x++; continue; }
+        let x1 = x;
+        while (x1 + 1 < s.tw && role[y][x1 + 1] && role[y][x1 + 1].key === r.key) x1++;
+        let rem = x1 - x + 1, hx = x;
+        while (rem > 0) {
+          const w = rem === 4 ? 4 : rem === 2 ? 2 : rem === 1 ? 1 : 3;
+          const id = hash(hx * 3 + 1, y0 * 7 + 2);
+          const house = {
+            x0: hx, w,
+            roof: theme.roofs[Math.floor(hash(hx, y0 + 99) * theme.roofs.length)],
+            windows: [],
+            door: -1,
+          };
+          // Fenster und Tür für die Mittelspalten
+          for (let c = 0; c < w; c++) {
+            const edge = w >= 3 && (c === 0 || c === w - 1);
+            house.windows.push(edge ? null : WINDOWS[Math.floor(hash(hx + c, y0 + 5) * WINDOWS.length)]);
+          }
+          if (w >= 3 && id < 0.3) house.door = 1 + Math.floor(hash(hx, y0 + 11) * (w - 2));
+          const y1 = Number(r.key.split(":")[1]);
+          for (let c = 0; c < w; c++) {
+            for (let yy = y0; yy <= y1; yy++) houseOf[yy][hx + c] = { house, col: c };
+          }
+          hx += w;
+          rem -= w;
+        }
+        x = x1 + 1;
+      }
+    }
+
+    const colRole = (h, c) => (h.w === 1 ? 1 : c === 0 ? 0 : c === h.w - 1 ? 2 : 1);
+    const LMR = ["l", "m", "r"];
 
     for (let y = 0; y < s.th; y++) {
       const row = [];
       for (let x = 0; x < s.tw; x++) {
         let img;
-        const n = !isFloor(x, y - 1), e = !isFloor(x + 1, y), so = !isFloor(x, y + 1), w = !isFloor(x - 1, y);
-        if (isFloor(x, y)) {
-          if (hasCity) {
-            img = this.add.image(x * TILE, y * TILE, "city", theme.floor(n, e, so, w, x, y));
-            if (n) {
-              const shade = this.add.image(x * TILE, y * TILE, "wallshade").setOrigin(0).setVisible(false);
-              rims.push(shade);
-              img.rim = shade;
-            }
-            // Deko nur auf Platzkacheln (gerade Koordinaten liegen nie auf dem Weg der Figur)
-            if (x % 2 === 0 && y % 2 === 0 && hash(y, x) < 0.55) {
-              const d = this.add.image(x * TILE, y * TILE, "city", DECOR[Math.floor(hash(x + 7, y) * DECOR.length)])
-                .setOrigin(0).setDepth(2).setVisible(false);
-              this.decor.push({ img: d, x, y });
-            }
-          } else {
-            img = this.add.image(x * TILE, y * TILE, "floor" + ((x * 7 + y * 13) % 2));
-          }
-        } else if (hasCity && !so) {
-          // Boden darunter: Mauerfront
-          img = this.add.image(x * TILE, y * TILE, "city", theme.face(x));
-        } else if (hasCity) {
-          // Mauerkrone: abgedunkelte Steine, helle Kante zur Gasse hin
-          img = this.add.image(x * TILE, y * TILE, "city", theme.topFrame(x)).setTint(theme.topTint);
-          const m = (!n ? 1 : 0) | (!e ? 2 : 0) | (!w ? 8 : 0);
-          if (m) {
-            const rim = this.add.image(x * TILE, y * TILE, "rim" + ti + "_" + m).setOrigin(0).setVisible(false);
-            rims.push(rim);
-            img.rim = rim;
+        const extras = [];
+        const add = (frame, depth) => {
+          const o = this.add.image(x * TILE, y * TILE, "city", frame).setOrigin(0).setVisible(false);
+          if (depth) o.setDepth(depth);
+          extras.push(o);
+          overlays.push(o);
+          return o;
+        };
+        if (!hasCity) {
+          img = this.add.image(x * TILE, y * TILE, isFloor(x, y) ? "floor" + ((x * 7 + y * 13) % 2) : "wall0");
+        } else if (isFloor(x, y)) {
+          img = this.add.image(x * TILE, y * TILE, "city", theme.floor(x, y));
+          if (!isFloor(x, y - 1)) {
+            const shade = this.add.image(x * TILE, y * TILE, "wallshade").setOrigin(0).setVisible(false);
+            extras.push(shade);
+            overlays.push(shade);
           }
         } else {
-          let m = 0;
-          if (!n) m |= 1;
-          if (!e) m |= 2;
-          if (!so) m |= 4;
-          if (!w) m |= 8;
-          img = this.add.image(x * TILE, y * TILE, "wall" + m);
+          const r = role[y][x];
+          const ho = houseOf[y][x];
+          const h = ho ? ho.house : { w: 1, roof: "brown", windows: [null], door: -1 };
+          const c = ho ? ho.col : 0;
+          const cr = colRole(h, c);
+          if (r.kind === "roof") {
+            const set = ROOFS[h.roof];
+            let frame = set[r.row][cr];
+            if (r.row === "mid" && cr === 1 && hash(x, y + 3) < 0.3) frame = set.midAlt[Math.floor(hash(y, x) * 3)];
+            if (r.row === "top" && cr !== 1) {
+              // Giebelecken sind oben durchsichtig: Boden dahinter
+              img = this.add.image(x * TILE, y * TILE, "city", theme.floor(x, y));
+              add(frame);
+            } else {
+              img = this.add.image(x * TILE, y * TILE, "city", frame);
+            }
+          } else {
+            const f = theme.facade[r.row];
+            img = this.add.image(x * TILE, y * TILE, "city", f[LMR[cr]]);
+            const win = h.windows[c];
+            if (r.row === "lower" && h.door === c) {
+              add(DOORWAY);
+            } else if (win && !(r.row === "upper" && h.door === c)) {
+              add(r.row === "upper" ? win[0] : win[1]);
+            }
+          }
         }
         img.setOrigin(0).setVisible(false);
+        img.extras = extras;
         this.layer.add(img);
         row.push(img);
       }
       this.tileImgs.push(row);
     }
-    rims.forEach((r) => this.layer.add(r));   // Kanten über den Kacheln zeichnen
+    overlays.forEach((o) => this.layer.add(o));   // Fenster, Schatten und Giebelecken über den Grundkacheln
+
+    // Plätze: Brunnen in der Mitte, Pflanzen in den Ecken
+    for (const [px, py, pw, ph] of s.plazas || []) {
+      if (!hasCity) break;
+      const fx = px + pw / 2 - 1, fy = py + ph / 2 - 1;
+      SPRING_FRAMES.forEach((r, ry) => r.forEach((f, rx) => {
+        const d = this.add.image((fx + rx) * TILE, (fy + ry) * TILE, "city", f).setOrigin(0).setDepth(2).setVisible(false);
+        this.decor.push({ img: d, x: fx + rx, y: fy + ry });
+      }));
+      [[px, py], [px + pw - 1, py], [px, py + ph - 1], [px + pw - 1, py + ph - 1]].forEach(([cx, cy], i) => {
+        const f = PLAZA_PLANTS[Math.floor(hash(cx + i, cy) * PLAZA_PLANTS.length)];
+        const d = this.add.image(cx * TILE, cy * TILE, "city", f).setOrigin(0).setDepth(2).setVisible(false);
+        this.decor.push({ img: d, x: cx, y: cy });
+      });
+    }
 
     this.stairsPos = s.stairs;
     this.stairsImg = this.add.image(s.stairs[0] * TILE, s.stairs[1] * TILE, "stairs")
-      .setOrigin(0).setDepth(1).setVisible(false);
+      .setOrigin(0.5).setDepth(1).setVisible(false);
 
     for (const e of this.entities.values()) e.imgs.forEach((i) => i.destroy());
     this.entities.clear();
@@ -344,22 +429,23 @@ class CaveScene extends Phaser.Scene {
   }
 
   addEntity(e) {
-    const tile = this.tileImgs[e.y] && this.tileImgs[e.y][e.x];
+    const tile = this.tileImgs[Math.floor(e.y)] && this.tileImgs[Math.floor(e.y)][Math.floor(e.x)];
+    const bx = e.x * TILE - TILE / 2, by = e.y * TILE - TILE / 2;   // linke obere Ecke, mittig auf der Position
     const visible = !!(tile && tile.visible);
     const frames = this.textures.exists("city") ? ENTITY_FRAMES[e.kind] : null;
     const imgs = [];
     if (this.textures.exists("city") && e.kind === "spring") {
       SPRING_FRAMES.forEach((row, ry) => row.forEach((f, rx) => {
-        imgs.push(this.add.image(e.x * TILE + rx * 16, e.y * TILE + ry * 16, "city", f)
+        imgs.push(this.add.image(bx + rx * 16, by + ry * 16, "city", f)
           .setOrigin(0).setScale(0.5).setDepth(3));
       }));
     } else if (frames) {
       frames.forEach((f, i) => {
         const dy = i - (frames.length - 1);   // obere Kacheln weiter oben
-        imgs.push(this.add.image(e.x * TILE, (e.y + dy) * TILE, "city", f).setOrigin(0).setDepth(3));
+        imgs.push(this.add.image(bx, by + dy * TILE, "city", f).setOrigin(0).setDepth(3));
       });
     } else {
-      imgs.push(this.add.image(e.x * TILE, e.y * TILE, "ent_" + e.kind).setOrigin(0).setDepth(3));
+      imgs.push(this.add.image(bx, by, "ent_" + e.kind).setOrigin(0).setDepth(3));
     }
     imgs.forEach((img) => img.setVisible(visible));
     this.entities.set(e.id, { imgs, x: e.x, y: e.y });
@@ -377,20 +463,20 @@ class CaveScene extends Phaser.Scene {
     for (const [x, y] of list) {
       const img = this.tileImgs[y] && this.tileImgs[y][x];
       if (!img || img.visible) continue;
-      img.setVisible(true);
-      if (img.rim) img.rim.setVisible(true);
+      const targets = [img, ...(img.extras || [])];
+      targets.forEach((t) => t.setVisible(true));
       shown.add(x + "," + y);
       if (!instant) {
-        const targets = img.rim ? [img, img.rim] : [img];
         targets.forEach((t) => t.setAlpha(0));
         this.tweens.add({ targets, alpha: 1, duration: 350 });
       }
-      if (this.stairsPos && x === this.stairsPos[0] && y === this.stairsPos[1]) {
-        this.stairsImg.setVisible(true);
-      }
+    }
+    // Treppe und Gegenstände sitzen auf Kachelgrenzen: sichtbar, sobald die Kachel rechts unten davon sichtbar ist
+    if (this.stairsPos && shown.has(Math.floor(this.stairsPos[0]) + "," + Math.floor(this.stairsPos[1]))) {
+      this.stairsImg.setVisible(true);
     }
     for (const e of this.entities.values()) {
-      if (shown.has(e.x + "," + e.y)) e.imgs.forEach((i) => i.setVisible(true));
+      if (shown.has(Math.floor(e.x) + "," + Math.floor(e.y))) e.imgs.forEach((i) => i.setVisible(true));
     }
     for (const d of this.decor || []) {
       if (shown.has(d.x + "," + d.y)) d.img.setVisible(true);
@@ -402,7 +488,7 @@ class CaveScene extends Phaser.Scene {
     this.playIdle();
     if (info && info.active) {
       const [x, y] = info.pos;
-      this.campfire.setPosition(x * TILE + TILE / 2 + 22, y * TILE + TILE / 2 + 4).setVisible(true);
+      this.campfire.setPosition(x * TILE + 24, y * TILE + 6).setVisible(true);
       this.actText.setText(heroName + " " + info.text).setVisible(true);
     } else {
       this.campfire.setVisible(false);
@@ -438,8 +524,9 @@ class CaveScene extends Phaser.Scene {
   }
 
   moveFigure(pos, facing, instant) {
-    const px = pos[0] * TILE + TILE / 2;
-    const py = this.useSheet ? pos[1] * TILE + TILE - 3 : pos[1] * TILE + TILE / 2;
+    // Positionen sind Kachelkoordinaten als Kommazahl (Mitte einer Gasse)
+    const px = pos[0] * TILE;
+    const py = this.useSheet ? pos[1] * TILE + 14 : pos[1] * TILE;
     const moved = Math.abs(this.figure.x - px) > 1 || Math.abs(this.figure.y - py) > 1;
     this.facing = facing || this.facing;
     this.pointer.setAngle(FACING_ANGLE[this.facing] || 0);

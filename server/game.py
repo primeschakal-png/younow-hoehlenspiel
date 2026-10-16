@@ -13,7 +13,7 @@ from datetime import datetime
 import entities as ent_mod
 from character import Character
 from hero import Hero
-from maze import BACK, LEFT, RIGHT, Maze
+from maze import BACK, LEFT, RIGHT, STEP, Maze
 
 COMMANDS = {
     "!links": "links", "!l": "links",
@@ -26,10 +26,10 @@ LABEL_ORDER = ["links", "geradeaus", "rechts", "zurueck"]
 
 # Abstimmwerte, hier wird nachjustiert
 BAL = {
-    "thirst_per_tile": 0.2,
-    "hunger_per_tile": 0.09,
+    "thirst_per_tile": 0.067,
+    "hunger_per_tile": 0.03,
     "camp_need_factor": 0.03,       # Verbrauch im Lager pro Tick relativ zu einem Schritt
-    "starve_tiles_per_hp": 12,       # bei 0 Hunger oder Durst: 1 LP alle x Schritte
+    "starve_tiles_per_hp": 36,       # bei 0 Hunger oder Durst: 1 LP alle x Schritte
     "auto_eat_below": 35,
     "auto_drink_below": 35,
     "food_value": 45,
@@ -87,7 +87,7 @@ CAMP_ACTIVITIES = [
 
 class Game:
     def __init__(self, vote_seconds=28, step_seconds=0.25, idle_minutes=5.0, idle_vote_seconds=10,
-                 cells_w=25, cells_h=15, reveal_radius=2):
+                 cells_w=16, cells_h=10, reveal_radius=4):
         self.vote_seconds = vote_seconds
         self.idle_vote_seconds = idle_vote_seconds
         self.step_seconds = step_seconds
@@ -231,7 +231,7 @@ class Game:
     def new_level(self):
         self.depth += 1
         seed = self.rnd.randrange(1 << 30)
-        self.maze = Maze(self.cells_w, self.cells_h, seed, grottos=3 + self.depth)
+        self.maze = Maze(self.cells_w, self.cells_h, seed, plazas=3)
         self.entities = ent_mod.populate(self.maze, self.depth, random.Random(seed + 1))
         self.cell = self.maze.start
         self.pos = Maze.center(self.cell)
@@ -296,6 +296,7 @@ class Game:
             "pos": list(self.pos),
             "facing": self.facing,
             "stairs": list(Maze.center(self.maze.stairs)),
+            "plazas": [list(p) for p in self.maze.plazas],
             "step": self.step_seconds,
             "vote": self._vote_info(),
             "hero": self.hero.stats(),
@@ -326,9 +327,9 @@ class Game:
     def _reveal_around(self, pos, emit=True):
         r = self.reveal_radius
         new = []
-        for dy in range(-r, r + 1):
-            for dx in range(-r, r + 1):
-                tx, ty = pos[0] + dx, pos[1] + dy
+        px, py = int(pos[0]), int(pos[1])        # Position liegt auf einer Kachelgrenze
+        for ty in range(py - r, py + r):
+            for tx in range(px - r, px + r):
                 if 0 <= tx < self.maze.tw and 0 <= ty < self.maze.th and (tx, ty) not in self.revealed:
                     self.revealed.add((tx, ty))
                     new.append([tx, ty])
@@ -479,8 +480,8 @@ class Game:
     def _go(self, d):
         nxt = self.maze.neighbor(self.cell, d)
         cx, cy = Maze.center(self.cell)
-        nx, ny = Maze.center(nxt)
-        self.path = [((cx + nx) // 2, (cy + ny) // 2), (nx, ny)]
+        dx, dy = (nxt[0] - self.cell[0], nxt[1] - self.cell[1])
+        self.path = [(cx + dx * i, cy + dy * i) for i in range(1, STEP + 1)]
         self.facing = d
         self.cell = nxt
         self.moved = True

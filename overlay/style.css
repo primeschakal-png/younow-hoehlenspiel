@@ -73,9 +73,8 @@ html, body {
 
 #dice {
   position: absolute;
-  top: 120px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 230px;
+  left: 16px;
   min-width: 300px;
   padding: 12px 18px;
   text-align: center;

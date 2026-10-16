@@ -10,7 +10,17 @@ Stand: 16.10.2026
 - Die Figur wird über ein LLM mit Persona gesteuert.
 - Grundziel der Figur: so lange wie möglich im Spiel bleiben, also "streamen".
 
-## 2. Welt: Höhlenlabyrinth
+## 2. Welt: Labyrinth einer verlassenen Magierstadt
+
+Grafik: Mage City Arcanos (Hyptosis, CC0), Kachelbeschreibung in `assets/tiles/magecity.json`.
+Das Labyrinth wird als Stadt dargestellt: Gassen 2 Kacheln breit, dazwischen Häuserblöcke von 4 Kacheln
+Dicke. Jede Mauerfolge ist unten Fassade (2 Reihen, mit Fenstern und gelegentlich einem Eingang), darüber
+Dach. Häuserzeilen werden in Häuser von meist 3 Kacheln Breite geteilt, jedes Haus würfelt Dach und Fenster aus.
+Plätze entstehen aus vier verbundenen Zellen, in der Mitte steht ein Brunnen. Ungerade Ebenen: Marktviertel
+(Sandstein, Holzdächer, Kopfsteinpflaster). Gerade Ebenen: verfallenes Viertel (graue Ziegel, Moosdächer,
+Plattenweg). Weitere Viertel (Gärten, Kellergewölbe) sind geplant.
+
+Ursprüngliche Beschreibung:
 
 - Prozedural erzeugt. Gerüst ist ein klassischer Labyrinth-Algorithmus (klare Gänge und Kreuzungen), darüber Höhlenoptik: unterschiedlich breite Gänge, Grotten an einzelnen Knoten, Felswände per Autotiling.
 - Ebenen: Treppen führen tiefer, jede Ebene wird neu erzeugt. Tiefer bedeutet gefährlicher, wertvoller und karger an Vorräten.
