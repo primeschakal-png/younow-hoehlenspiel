@@ -17,8 +17,10 @@ Das Labyrinth wird als Stadt dargestellt: Gassen 2 Kacheln breit, dazwischen Hä
 Dicke. Jede Mauerfolge ist unten Fassade (2 Reihen, mit Fenstern und gelegentlich einem Eingang), darüber
 Dach. Häuserzeilen werden in Häuser von meist 3 Kacheln Breite geteilt, jedes Haus würfelt Dach und Fenster aus.
 Plätze entstehen aus vier verbundenen Zellen (Brunnen, Markt, Park oder Statuen), dazu Gärten zwischen den
-Häusern. Das Viertel wird je Karte gewürfelt: Marktviertel (Sandstein, Holzdächer, Kopfsteinpflaster) oder
-verfallenes Viertel (graue Ziegel, Moosdächer, Plattenweg).
+Häusern und Parks mit Bäumen (Herbstkronen, knorrige Bäume, Bäumchen im Fass, Büsche). Das Viertel wird je Karte
+gewürfelt: Marktviertel (Sandstein, etwa ein Viertel der Blöcke grün), verfallenes Viertel (graue Ziegel,
+Moosdächer, etwa ein Drittel grün) oder Gartenviertel am Stadtrand (zwei Drittel grün, Gras in den Gassen).
+Zum Testen: `?viertel=0`, `1` oder `2` an die Overlay-Adresse hängen.
 
 Gebiete nach Tiefe (in `server/game.py`, Liste `AREAS`): Ebene 1 Magierstadt, Ebene 2 Keller, Ebene 3 Katakomben,
 ab Ebene 4 Höhlen. Unter Tage ist die Karte eine Draufsicht im Stil von Dungeon Crawl Stone Soup (CC0, Kachelblatt

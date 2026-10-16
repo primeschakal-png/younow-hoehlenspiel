@@ -20,13 +20,32 @@ const THEMES = [
     floor: (x, y) => { const r = hash(x, y); return r < 0.2 ? 75 : r < 0.35 ? 76 : 81; },
     facade: { upper: { l: 32, m: 33, r: 34 }, lower: { l: 40, m: 41, r: 42 } },
     roofs: ["brown", "brown", "brown", "moss"],
+    outdoor: 0.25,
   },
   {
     floor: (x, y) => { const r = hash(x, y); return r < 0.04 ? 328 : r < 0.12 ? 9 : r < 0.5 ? 330 : 1; },
     facade: { upper: { l: 221, m: 221, r: 221 }, lower: { l: 229, m: 229, r: 229 } },
     roofs: ["moss", "moss", "brown"],
+    outdoor: 0.3,
+  },
+  // Gartenviertel am Stadtrand: viel Grün, Parks und Gärten zwischen wenigen Häusern
+  {
+    floor: (x, y) => { const r = hash(x, y); return r < 0.2 ? 75 : r < 0.35 ? 76 : 81; },
+    facade: { upper: { l: 32, m: 33, r: 34 }, lower: { l: 40, m: 41, r: 42 } },
+    roofs: ["brown", "moss"],
+    outdoor: 0.65,
+    tufts: 0.08,
   },
 ];
+
+// Parks: Baumkronen 3x3 (Herbstlaub), knorriger Baum 2x4, kleine Bäume im Fass 1x2, Büsche
+const CROWNS = [
+  [[240, 241, 242], [248, 249, 250], [256, 257, 258]],
+  [[243, 244, 245], [251, 252, 253], [null, 260, 261]],
+];
+const GNARLED = [[122, 123], [130, 131], [138, 139], [146, 147]];
+const BARREL_TREES = [[19, 27], [17, 25]];
+const BUSHES = [10, 10, 2, 3];
 
 // Dächer: je Zeile links, mitte, rechts
 const ROOFS = {
@@ -423,7 +442,9 @@ class CaveScene extends Phaser.Scene {
     const isFloor = (x, y) => x >= 0 && y >= 0 && x < s.tw && y < s.th && rows[y][x] === ".";
     const hasCity = this.textures.exists("city");
     // Viertel je Karte zufällig, aber für dieselbe Karte immer gleich
-    const ti = Math.floor(hash(s.stairs[0] * 3 + s.tw, s.stairs[1] * 5 + s.depth) * THEMES.length);
+    const forced = Number(params.get("viertel"));   // zum Testen: ?viertel=0, 1 oder 2
+    const ti = params.has("viertel") && THEMES[forced] ? forced
+      : Math.floor(hash(s.stairs[0] * 3 + s.tw, s.stairs[1] * 5 + s.depth) * THEMES.length);
     const theme = THEMES[ti];
     const overlays = [];
 
@@ -469,10 +490,14 @@ class CaveScene extends Phaser.Scene {
         let x1 = x;
         while (x1 + 1 < s.tw && role[y][x1 + 1] && role[y][x1 + 1].key === r.key) x1++;
         const runLen = Number(r.key.split(":")[1]) - y0 + 1;
-        const gardenChance = runLen >= 8 ? 0.55 : 0.1;
-        if (x1 - x + 1 >= 2 && hash(x * 5 + 3, y0 * 11 + 7) < gardenChance) {
+        // Grünflächen statt Häusern: im Gartenviertel oft, sonst gelegentlich, in langen Blöcken häufiger
+        const outdoor = theme.outdoor || 0.25;
+        const greenChance = runLen >= 8 ? Math.min(0.85, outdoor + 0.35) : outdoor;
+        if (x1 - x + 1 >= 2 && hash(x * 5 + 3, y0 * 11 + 7) < greenChance) {
           const y1g = Number(r.key.split(":")[1]);
-          const garden = { garden: true, x0: x, x1, y0, y1: y1g, fence: isFloor(x, y1g + 1) };
+          const park = x1 - x + 1 >= 3 && runLen >= 3 && hash(x * 7 + 5, y0 * 3 + 1) < 0.55;
+          const garden = { garden: true, park, x0: x, x1, y0, y1: y1g, fence: isFloor(x, y1g + 1) };
+          if (park) garden.trees = this.planPark(x, x1, y0, y1g);
           for (let gx = x; gx <= x1; gx++) for (let yy = y0; yy <= y1g; yy++) houseOf[yy][gx] = { house: garden, col: gx - x };
           x = x1 + 1;
           continue;
@@ -507,7 +532,7 @@ class CaveScene extends Phaser.Scene {
     }
 
     const colRole = (h, c) => (h.w === 1 ? 1 : c === 0 ? 0 : c === h.w - 1 ? 2 : 1);
-    const PLAZA_TYPES = ["brunnen", "markt", "park", "statuen"];
+    const PLAZA_TYPES = ["brunnen", "markt", "park", "park", "statuen"];
     const plazaType = (px, py) => PLAZA_TYPES[Math.floor(hash(px * 13, py * 17) * PLAZA_TYPES.length)];
     const grassTiles = new Set();
     for (const [px, py, pw, ph] of s.plazas || []) {
@@ -534,6 +559,7 @@ class CaveScene extends Phaser.Scene {
         } else if (isFloor(x, y)) {
           img = this.add.image(x * TILE, y * TILE, "city", grassTiles.has(x + "," + y) ? GRASS[Math.floor(hash(x, y) * GRASS.length)] : theme.floor(x, y));
           if (hash(x + 31, y + 17) < (ti === 1 ? 0.1 : 0.02)) add(LEAVES[Math.floor(hash(y, x + 3) * LEAVES.length)]);
+          else if (theme.tufts && hash(x + 13, y + 41) < theme.tufts) add([2, 3, 53][Math.floor(hash(x, y + 7) * 3)]);
           if (!isFloor(x, y - 1)) {
             const shade = this.add.image(x * TILE, y * TILE, "wallshade").setOrigin(0).setVisible(false);
             extras.push(shade);
@@ -545,7 +571,11 @@ class CaveScene extends Phaser.Scene {
           const h = ho ? ho.house : { w: 1, roof: "brown", windows: [null], door: -1, ivy: -1 };
           const c = ho ? ho.col : 0;
           const cr = colRole(h, c);
-          if (h.garden) {
+          if (h.park) {
+            img = this.add.image(x * TILE, y * TILE, "city", GRASS[Math.floor(hash(x, y) * GRASS.length)]);
+            const f = h.trees.get(x + "," + y);
+            if (f !== undefined && f !== null) add(f);
+          } else if (h.garden) {
             img = this.add.image(x * TILE, y * TILE, "city", this.gardenTile(h, x, y, add));
           } else if (r.kind === "roof") {
             const set = ROOFS[h.roof];
@@ -688,6 +718,38 @@ class CaveScene extends Phaser.Scene {
       this.dark = this.add.image(0, 0, "darkness").setDepth(15).setDisplaySize(LIGHT_SIZE, LIGHT_SIZE);
     }
     this.dark.setVisible(alpha > 0).setAlpha(alpha);
+  }
+
+  // Park: Bäume so verteilen, dass sie in den Block passen. Liefert "x,y" -> Bildnummer
+  planPark(x0, x1, y0, y1) {
+    const trees = new Map();
+    const h = y1 - y0 + 1;
+    const put = (grid, gx, gy) => grid.forEach((row, ry) => row.forEach((f, rx) => {
+      if (f !== null) trees.set((gx + rx) + "," + (gy + ry), f);
+    }));
+    let x = x0;
+    while (x <= x1) {
+      const room = x1 - x + 1;
+      const r = hash(x * 11 + 3, y0 * 5 + 9);
+      if (room >= 3 && h >= 3 && r < 0.55) {
+        // Baumkrone, bei hohen Blöcken mehrere übereinander
+        for (let y = y0; y + 2 <= y1; y += 3) {
+          if (y > y0 && hash(x, y) < 0.3) continue;
+          put(CROWNS[Math.floor(hash(x + 3, y) * CROWNS.length)], x, y);
+        }
+        x += 3 + (hash(x, y0 + 1) < 0.4 ? 1 : 0);
+      } else if (room >= 2 && h >= 4 && r < 0.75) {
+        put(GNARLED, x, y1 - 3);
+        x += 3;
+      } else if (h >= 2 && r < 0.88) {
+        put(BARREL_TREES[Math.floor(hash(x, y0 + 4) * BARREL_TREES.length)].map((f) => [f]), x, y1 - 1);
+        x += 2;
+      } else {
+        trees.set(x + "," + (y1 - Math.floor(hash(x, y1) * Math.min(h, 2))), BUSHES[Math.floor(hash(x + 1, y0) * BUSHES.length)]);
+        x += 1;
+      }
+    }
+    return trees;
   }
 
   // Garten: Hecke am Rand, Zaun zur Gasse hin, innen Gras mit Beeten, Blumen, Kürbissen und kleinen Bäumen

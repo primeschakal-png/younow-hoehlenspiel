@@ -258,7 +258,7 @@ class Game:
     def new_level(self):
         self.depth += 1
         seed = self.rnd.randrange(1 << 30)
-        self.maze = Maze(self.cells_w, self.cells_h, seed, plazas=3)
+        self.maze = Maze(self.cells_w, self.cells_h, seed, plazas=4 if self.depth == 1 else 3)
         self.entities = ent_mod.populate(self.maze, self.depth, random.Random(seed + 1))
         self.cell = self.maze.start
         self.pos = Maze.center(self.cell)
@@ -826,7 +826,7 @@ class Game:
             score = self.rnd.uniform(0, 0.6)
             if "Wasser" in hint:
                 score += 1.5 * thirst_need
-            if "Gemüse" in hint:
+            if "Gemüse" in hint or "Pilzen" in hint:
                 score += 0.8 * hunger_need
             if "glitzert" in hint:
                 score += 0.4 + 0.6 * max(thirst_need, hunger_need)
