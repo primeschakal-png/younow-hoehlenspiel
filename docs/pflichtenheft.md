@@ -26,6 +26,10 @@ ab Ebene 4 Höhlen. Unter Tage ist die Karte eine Draufsicht im Stil von Dungeon
 der am Lagerfeuer flackert. Brunnen, Statuen und Gemüse werden dort zu Springbrunnen, Engelsstatue und Pilzen.
 Monster, Truhen, Fallen und Beute-Symbole stammen ebenfalls aus Dungeon Crawl Stone Soup.
 
+Tageszeit: In der Stadt richtet sich das Licht nach der Uhr des PCs. Morgens rötlich, tagsüber normal, ab 17 Uhr
+Abendrot, ab 20 Uhr blau und dunkel, nachts Dunkelheit mit Lichtkreis um die Figur. Das LLM bekommt die Tageszeit
+als Satz mit.
+
 Ursprüngliche Beschreibung:
 
 - Prozedural erzeugt. Gerüst ist ein klassischer Labyrinth-Algorithmus (klare Gänge und Kreuzungen), darüber Höhlenoptik: unterschiedlich breite Gänge, Grotten an einzelnen Knoten, Felswände per Autotiling.

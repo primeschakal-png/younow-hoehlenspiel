@@ -88,6 +88,46 @@ const UNDER = {
     hall: "kata_deco", dark: 0.72 },
   hoehle: { floor: "hoehle_floor", wall: "hoehle_wall", deco: "hoehle_deco", decoChance: 0.07, hall: "hoehle_deco", dark: 0.8 },
 };
+// Tageszeit nach der Uhr des PCs (in der Stadt). Zum Testen: ?stunde=22
+const HOUR_OVERRIDE = params.has("stunde") ? Number(params.get("stunde")) : null;
+// Stützpunkte: Stunde, Farbton (wird mit dem Bild multipliziert), Stärke des Farbtons, Dunkelheit
+const DAYTIME = [
+  [0, 0x2a3a7a, 0.8, 0.7],
+  [5, 0x2a3a7a, 0.8, 0.7],
+  [6.5, 0xff9070, 0.4, 0.2],
+  [8, 0xffffff, 0, 0],
+  [17, 0xffffff, 0, 0],
+  [19, 0xff8a40, 0.45, 0],
+  [20.5, 0x5a4a9a, 0.6, 0.35],
+  [22, 0x2a3a7a, 0.8, 0.7],
+  [24, 0x2a3a7a, 0.8, 0.7],
+];
+
+function daytime(hour) {
+  for (let i = 0; i < DAYTIME.length - 1; i++) {
+    const [h0, c0, t0, d0] = DAYTIME[i];
+    const [h1, c1, t1, d1] = DAYTIME[i + 1];
+    if (hour >= h0 && hour <= h1) {
+      const f = h1 > h0 ? (hour - h0) / (h1 - h0) : 0;
+      const a = Phaser.Display.Color.IntegerToColor(c0);
+      const b = Phaser.Display.Color.IntegerToColor(c1);
+      const mix = Phaser.Display.Color.Interpolate.ColorWithColor(a, b, 100, Math.round(f * 100));
+      return {
+        color: Phaser.Display.Color.GetColor(mix.r, mix.g, mix.b),
+        tint: t0 + (t1 - t0) * f,
+        dark: d0 + (d1 - d0) * f,
+      };
+    }
+  }
+  return { color: 0xffffff, tint: 0, dark: 0 };
+}
+
+function currentHour() {
+  if (HOUR_OVERRIDE !== null && !Number.isNaN(HOUR_OVERRIDE)) return HOUR_OVERRIDE % 24;
+  const d = new Date();
+  return d.getHours() + d.getMinutes() / 60;
+}
+
 const LIGHT_SIZE = 2000;   // Durchmesser des Dunkelheitsbilds in Weltpixeln
 const ITEM_KEYS = ["chest_closed", "chest_open", "trap", "food", "water", "potion", "gold"];
 const PLAZA_PLANTS = [16, 2, 3, 10, 11, 12];  // Ecken eines Platzes
@@ -295,6 +335,10 @@ class CaveScene extends Phaser.Scene {
 
   create() {
     makeTextures(this);
+    // Farbton der Tageszeit: großes Rechteck, das der Figur folgt und das Bild darunter einfärbt
+    this.ambient = this.add.rectangle(0, 0, 8000, 8000, 0xffffff, 0).setDepth(14)
+      .setBlendMode(Phaser.BlendModes.MULTIPLY).setVisible(false);
+    this.time.addEvent({ delay: 20000, loop: true, callback: () => this.applyAmbient() });
     this.useSheet = this.textures.exists("herosheet");
     if (this.useSheet) makeHeroAnims(this);
     this.facing = "S";
@@ -370,7 +414,7 @@ class CaveScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.figure, true, 0.12, 0.12);
     this.cameras.main.setZoom(ZOOM);
     this.cameras.main.setFollowOffset(0, -90 / ZOOM);
-    this.setDarkness(under ? under.dark : 0);
+    this.applyAmbient();
   }
 
   // Stadt: Häuserzeilen mit Dächern und Fassaden, Gärten, Plätze
@@ -627,6 +671,18 @@ class CaveScene extends Phaser.Scene {
   }
 
   // Dunkelheit mit Lichtkreis um die Figur (unter Tage)
+  // unter Tage zählt nur das Gebiet, in der Stadt die Tageszeit
+  applyAmbient() {
+    if (this.under) {
+      this.ambient.setVisible(false);
+      this.setDarkness(this.under.dark);
+      return;
+    }
+    const t = daytime(currentHour());
+    this.ambient.setFillStyle(t.color, t.tint).setVisible(t.tint > 0.01);
+    this.setDarkness(t.dark > 0.01 ? t.dark : 0);
+  }
+
   setDarkness(alpha) {
     if (!this.dark) {
       this.dark = this.add.image(0, 0, "darkness").setDepth(15).setDisplaySize(LIGHT_SIZE, LIGHT_SIZE);
@@ -816,6 +872,7 @@ class CaveScene extends Phaser.Scene {
 
   update(time) {
     if (!this.figure) return;
+    if (this.ambient.visible) this.ambient.setPosition(this.figure.x, this.figure.y);
     if (this.dark && this.dark.visible) {
       // am Lagerfeuer flackert das Licht etwas
       const flicker = this.camping ? 1.15 + Math.sin(time / 90) * 0.03 + Math.sin(time / 37) * 0.02 : 1;

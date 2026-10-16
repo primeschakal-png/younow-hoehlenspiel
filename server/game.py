@@ -153,6 +153,7 @@ class Game:
         h = self.hero
         parts = [
             f"Du bist auf Ebene {self.depth}, {area_for(self.depth)['where']}. Je tiefer, desto gefährlicher.",
+            self.daytime_sentence(),
             f"Leben: {h.hp} von {h.max_hp}.",
             "Du bist " + need_word(h.hunger, ["satt", "leicht hungrig", "hungrig", "am Verhungern"]) + " und "
             + need_word(h.thirst, ["nicht durstig", "leicht durstig", "durstig", "am Verdursten"]) + ".",
@@ -271,6 +272,20 @@ class Game:
             self.comment(f"Du bist hinabgestiegen und jetzt {area['where']}.")
         else:
             self.log(f"{self.hero.name} betritt Ebene {self.depth}.")
+
+    def daytime_sentence(self):
+        h = datetime.now().hour
+        if self.underground():
+            return "Hier unten ist es immer dunkel, nur deine Fackel gibt Licht."
+        if 6 <= h < 8:
+            return "Es dämmert, die Sonne geht gerade auf."
+        if 8 <= h < 17:
+            return "Es ist Tag."
+        if 17 <= h < 20:
+            return "Es ist Abend, die Sonne geht unter."
+        if 20 <= h < 22:
+            return "Es wird dunkel."
+        return "Es ist Nacht und dunkel in den Gassen."
 
     def underground(self):
         return area_for(self.depth)["key"] != "stadt"
