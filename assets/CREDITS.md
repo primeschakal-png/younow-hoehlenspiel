@@ -8,4 +8,10 @@
 
 ## Figuren
 
-Noch Platzhalter. Geplant: LPC (Liberated Pixel Cup), hier kommen dann die Angaben aus dem Generator hinein.
+- **Spielfigur** `characters/hero.png`, erstellt mit dem Universal LPC Spritesheet Character Generator (Liberated Pixel Cup).
+  Alle Einzelteile sind unter OGA-BY 3.0 verfügbar (die Haare zusätzlich CC0), verwendet wird OGA-BY 3.0.
+  Künstler: Stephen Challener (Redshrike), Johannes Sjölund (wulax), Sander Frenken (castelonia),
+  Benjamin K. Smith (BenCreating), bluecarrot16, ElizaWy, JaidynReiman, Nila122.
+  Vollständige Liste mit Links pro Einzelteil: `characters/hero-credits.txt`.
+
+- Monster: noch Platzhalter.

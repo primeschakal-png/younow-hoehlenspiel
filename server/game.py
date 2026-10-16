@@ -505,6 +505,7 @@ class Game:
             loot = self._chest_loot()
             self.outcome(0.6)
             self.log(f"{h.name} durchsucht einen Vorratssack: {loot}.")
+            self.emit({"type": "anim", "name": "emote"})
             self.comment(f"Du hast einen alten Vorratssack durchsucht und darin gefunden: {loot}.")
             self.emit_stats()
             self.pause(BAL["event_pause"])
@@ -531,6 +532,7 @@ class Game:
             self.outcome(1.0 if h.hp < h.max_hp * 0.6 else 0.4)
             h.hp = h.max_hp
             self.log(f"Eine alte Statue leuchtet auf. {h.name} fühlt sich wie neu geboren.")
+            self.emit({"type": "anim", "name": "cast"})
             self.comment("Eine leuchtende alte Statue hat dich vollständig geheilt.")
             self.emit_stats()
             self.pause(BAL["event_pause"])

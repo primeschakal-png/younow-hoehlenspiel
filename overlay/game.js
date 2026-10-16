@@ -34,6 +34,28 @@ const ENTITY_FRAMES = {
 };
 const DECOR = [F(0, 2), F(0, 3), F(1, 2), F(1, 3), F(1, 4), F(41, 5), F(0, 4)];
 
+// LPC-Spritesheet: 64x64 je Bild, 13 Bilder pro Zeile, Richtungen je Animation in der Reihenfolge N, W, S, O
+const DIR_ROW = { N: 0, W: 1, S: 2, E: 3 };
+
+function makeHeroAnims(sc) {
+  const mk = (key, base, from, to, rate, repeat) => {
+    for (const [d, r] of Object.entries(DIR_ROW)) {
+      const frames = [];
+      for (let c = from; c <= to; c++) frames.push({ key: "herosheet", frame: (base + r) * 13 + c });
+      sc.anims.create({ key: key + "_" + d, frames, frameRate: rate, repeat });
+    }
+  };
+  mk("walk", 8, 1, 8, 12, -1);
+  mk("idle", 22, 0, 1, 2, -1);
+  mk("slash", 12, 0, 5, 14, 0);
+  mk("cast", 0, 0, 6, 12, 0);
+  mk("emote", 34, 0, 2, 5, 0);
+  mk("sit", 30, 0, 0, 1, 0);
+  const hurt = [];
+  for (let c = 0; c < 6; c++) hurt.push({ key: "herosheet", frame: 20 * 13 + c });
+  sc.anims.create({ key: "hurt", frames: hurt, frameRate: 8, repeat: 0 });
+}
+
 function hash(x, y) {
   let h = (x * 374761393 + y * 668265263) | 0;
   h = (h ^ (h >>> 13)) * 1274126177;
@@ -179,10 +201,17 @@ class CaveScene extends Phaser.Scene {
 
   preload() {
     this.load.spritesheet("city", "assets/tiles/magecity.png", { frameWidth: 32, frameHeight: 32 });
+    this.load.spritesheet("herosheet", "assets/characters/hero.png", { frameWidth: 64, frameHeight: 64 });
   }
 
   create() {
     makeTextures(this);
+    this.useSheet = this.textures.exists("herosheet");
+    if (this.useSheet) makeHeroAnims(this);
+    this.facing = "S";
+    this.camping = false;
+    this.dead = false;
+    this.idleTimer = null;
     this.actText = this.add.text(0, 0, "", {
       fontFamily: "Trebuchet MS, Verdana, sans-serif",
       fontSize: "15px",
@@ -266,9 +295,14 @@ class CaveScene extends Phaser.Scene {
     for (const e of s.entities || []) this.addEntity(e);
 
     if (!this.figure) {
-      this.figure = this.add.image(0, 0, "hero").setDepth(10);
-      this.pointer = this.add.image(0, 0, "pointer").setDepth(11);
+      if (this.useSheet) {
+        this.figure = this.add.sprite(0, 0, "herosheet", 22 * 13).setOrigin(0.5, 0.97).setDepth(10);
+      } else {
+        this.figure = this.add.image(0, 0, "hero").setDepth(10);
+      }
+      this.pointer = this.add.image(0, 0, "pointer").setDepth(11).setVisible(!this.useSheet);
     }
+    this.dead = false;
 
     this.step = s.step || 0.25;
     this.reveal(s.revealed, true);
@@ -329,6 +363,8 @@ class CaveScene extends Phaser.Scene {
   }
 
   setCamp(info) {
+    this.camping = !!(info && info.active);
+    this.playIdle();
     if (info && info.active) {
       const [x, y] = info.pos;
       this.campfire.setPosition(x * TILE + TILE / 2 + 22, y * TILE + TILE / 2 + 4).setVisible(true);
@@ -351,7 +387,7 @@ class CaveScene extends Phaser.Scene {
 
   update() {
     if (!this.figure) return;
-    let top = this.figure.y - 18;
+    let top = this.figure.y - (this.useSheet ? 50 : 18);
     if (this.actText.visible) {
       this.actText.setPosition(this.figure.x, top);
       top -= this.actText.displayHeight + 3;
@@ -368,15 +404,41 @@ class CaveScene extends Phaser.Scene {
 
   moveFigure(pos, facing, instant) {
     const px = pos[0] * TILE + TILE / 2;
-    const py = pos[1] * TILE + TILE / 2;
-    this.pointer.setAngle(FACING_ANGLE[facing] || 0);
+    const py = this.useSheet ? pos[1] * TILE + TILE - 3 : pos[1] * TILE + TILE / 2;
+    const moved = Math.abs(this.figure.x - px) > 1 || Math.abs(this.figure.y - py) > 1;
+    this.facing = facing || this.facing;
+    this.pointer.setAngle(FACING_ANGLE[this.facing] || 0);
     if (instant) {
       this.figure.setPosition(px, py);
       this.pointer.setPosition(px, py);
+      this.playIdle();
       return;
     }
     const duration = this.step * 1000 * 0.95;
     this.tweens.add({ targets: [this.figure, this.pointer], x: px, y: py, duration, ease: "Linear" });
+    if (this.useSheet && !this.dead) {
+      if (moved) this.figure.play("walk_" + this.facing, true);
+      if (this.idleTimer) this.idleTimer.remove();
+      this.idleTimer = this.time.delayedCall(this.step * 1000 * 1.8, () => this.playIdle());
+    }
+  }
+
+  playIdle() {
+    if (!this.useSheet || this.dead) return;
+    if (this.camping) this.figure.play("sit_S", true);
+    else this.figure.play("idle_" + this.facing, true);
+  }
+
+  action(name) {
+    if (!this.useSheet || this.dead) return;
+    if (this.idleTimer) this.idleTimer.remove();
+    this.figure.play(name + "_" + this.facing);
+    this.figure.once("animationcomplete", () => this.playIdle());
+  }
+
+  die() {
+    this.dead = true;
+    if (this.useSheet) this.figure.play("hurt");
   }
 }
 
@@ -505,6 +567,7 @@ function showDeath(m) {
   el("death-title").textContent = m.name + " ist tot";
   el("death-cause").textContent = m.cause[0].toUpperCase() + m.cause.slice(1) + " auf Ebene " + m.depth + ".";
   renderHall(m.hall);
+  scene.die();
   el("death").classList.remove("hidden");
   el("vote").classList.add("hidden");
   scene.setCamp(null);
@@ -572,6 +635,10 @@ function handle(msg) {
       break;
     case "dice":
       showDice(msg);
+      scene.action(msg.label.startsWith("Kampf") ? "slash" : "emote");
+      break;
+    case "anim":
+      scene.action(msg.name);
       break;
     case "camp":
       scene.setCamp(msg);

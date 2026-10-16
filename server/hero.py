@@ -5,9 +5,10 @@ Hunger und Durst laufen von 100 (satt) bis 0 (verhungert/verdurstet).
 
 import random
 
+# Die Spielfigur ist ein bärtiger Mann, deshalb nur männliche Namen
 NAMES = [
-    "Borin", "Elra", "Kael", "Mira", "Torvik", "Sela", "Garm", "Ylva",
-    "Dorn", "Nessa", "Brann", "Ilka", "Fenna", "Rurik", "Tamsin", "Odo",
+    "Borin", "Kael", "Torvik", "Garm", "Dorn", "Brann", "Rurik", "Odo",
+    "Haldor", "Fenwick", "Grim", "Tobias", "Ansgar", "Merek", "Ulf", "Jorund",
 ]
 
 

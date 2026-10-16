@@ -20,8 +20,8 @@ ORIGINS = [
     "aus den Sümpfen im Süden", "von fahrendem Volk",
 ]
 
-CLASSES = ["Kriegerin", "Krieger", "Waldläuferin", "Waldläufer", "Diebin", "Dieb",
-           "Söldnerin", "Söldner", "Schatzsucherin", "Schatzsucher", "Gelehrte", "Gelehrter"]
+CLASSES = ["Krieger", "Waldläufer", "Dieb", "Söldner", "Schatzsucher", "Gelehrter",
+           "Wandermönch", "Schmied", "Spielmann", "Kartenzeichner"]
 
 # Eigenschaft: (Wirkung auf courage, Wirkung auf audience)
 TRAITS = {
