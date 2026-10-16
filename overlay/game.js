@@ -14,6 +14,7 @@ let scene = null;
 let pending = [];
 let voteEndsAt = 0;
 let voteTimer = null;
+let voteHideTimer = null;
 let logTimer = null;
 
 // ---------------- Phaser ----------------
@@ -213,6 +214,7 @@ let currentOptions = [];
 
 function startVote(options, seconds, counts) {
   currentOptions = options;
+  clearTimeout(voteHideTimer);
   el("vote-title").textContent = "Wohin soll ich gehen?";
   renderVote(options, counts || {}, null);
   el("vote").classList.remove("hidden");
@@ -231,7 +233,8 @@ function endVote(choice, reason, counts) {
   renderVote(currentOptions, counts, choice);
   el("vote-title").textContent = LABELS[choice] + "!";
   el("vote-timer").textContent = reason;
-  setTimeout(() => el("vote").classList.add("hidden"), 2500);
+  clearTimeout(voteHideTimer);
+  voteHideTimer = setTimeout(() => el("vote").classList.add("hidden"), 3500);
 }
 
 // ---------------- Nachrichten ----------------
