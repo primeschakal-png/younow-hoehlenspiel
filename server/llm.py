@@ -61,9 +61,11 @@ class LLMClient:
             "max_tokens": max_tokens,
             "temperature": temperature,
             "response_format": {"type": "json_object"},
-            # Qwen3: Denkmodus aus, sonst dauert jede Antwort sehr lange
-            "chat_template_kwargs": {"enable_thinking": False},
         }
+        if "127.0.0.1" in self.url or "localhost" in self.url:
+            # nur lokal (llama-server mit Qwen3): Denkmodus aus, sonst dauert jede Antwort sehr lange.
+            # Bezahl-Schnittstellen bekommen das Feld nicht, manche lehnen unbekannte Felder ab.
+            payload["chat_template_kwargs"] = {"enable_thinking": False}
         try:
             async with self.session.post(self.url, json=payload, headers=headers,
                                          timeout=aiohttp.ClientTimeout(total=self.timeout)) as r:
