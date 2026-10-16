@@ -190,6 +190,42 @@ async def no_cache(request, handler):
     return resp
 
 
+# ---------- YouNow-Mitschnitt (Userscript schickt Rohdaten) ----------
+
+RAW_LOG = ROOT / "logs" / "younow_raw.jsonl"
+RAW_MAX = 30 * 1024 * 1024
+raw_stats = {"count": 0, "last": 0.0}
+
+
+async def younow_raw(request):
+    local_only(request)
+    data = await request.json()
+    items = data.get("items") or []
+    RAW_LOG.parent.mkdir(exist_ok=True)
+    if RAW_LOG.exists() and RAW_LOG.stat().st_size > RAW_MAX:
+        RAW_LOG.replace(RAW_LOG.with_suffix(".old.jsonl"))   # alte Datei behalten, neu anfangen
+    with RAW_LOG.open("a", encoding="utf-8") as fh:
+        for it in items:
+            fh.write(json.dumps(it, ensure_ascii=False) + "\n")
+    raw_stats["count"] += len(items)
+    raw_stats["last"] = time.time()
+    return web.json_response({"ok": True})
+
+
+async def younow_raw_info(request):
+    local_only(request)
+    size = RAW_LOG.stat().st_size if RAW_LOG.exists() else 0
+    ago = round(time.time() - raw_stats["last"]) if raw_stats["last"] else None
+    return web.json_response({"count": raw_stats["count"], "size": size, "ago": ago})
+
+
+async def younow_raw_download(request):
+    local_only(request)
+    if not RAW_LOG.exists():
+        raise web.HTTPNotFound(text="Noch kein Mitschnitt.")
+    return web.FileResponse(RAW_LOG, headers={"Content-Disposition": "attachment; filename=younow_raw.jsonl"})
+
+
 def make_app():
     app = web.Application(middlewares=[no_cache])
     app["game"] = Game()
@@ -204,6 +240,9 @@ def make_app():
     app.router.add_get("/api/settings", settings_get)
     app.router.add_post("/api/settings", settings_post)
     app.router.add_post("/api/action", settings_action)
+    app.router.add_post("/api/younow/raw", younow_raw)
+    app.router.add_get("/api/younow/raw", younow_raw_info)
+    app.router.add_get("/api/younow/raw.jsonl", younow_raw_download)
     app.router.add_get("/ws", ws_handler)
     app.router.add_static("/static/", OVERLAY)
     app.router.add_static("/assets/", ROOT / "assets")

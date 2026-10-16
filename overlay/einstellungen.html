@@ -128,7 +128,14 @@
       <button data-action="sound_test">Ton testen</button>
     </div>
   </header>
-  <main id="groups"></main>
+  <main>
+    <section class="card" id="younow">
+      <h2>YouNow-Mitschnitt</h2>
+      <p class="help" id="raw-info">Noch nichts empfangen. Userscript „younow-mitschnitt“ in Tampermonkey installieren und einen YouNow-Stream öffnen.</p>
+      <p class="help"><a href="/api/younow/raw.jsonl">Mitschnitt herunterladen</a></p>
+    </section>
+    <div id="groups"></div>
+  </main>
   <div class="bar">
     <div class="bar-inner">
       <span id="msg">Lade Einstellungen ...</span>
@@ -328,6 +335,19 @@ $("reset").addEventListener("click", () => { Object.keys(inputs).forEach((k) => 
 document.querySelectorAll("[data-action]").forEach((b) => b.addEventListener("click", () => action(b.dataset.action, b)));
 window.addEventListener("beforeunload", (e) => { if (changedKeys().length) e.preventDefault(); });
 load();
+
+async function rawInfo() {
+  try {
+    const r = await fetch("/api/younow/raw");
+    const d = await r.json();
+    if (d.count || d.size) {
+      $("raw-info").textContent = (d.count ? d.count + " Nachrichten seit dem Start" : "Seit dem Start nichts Neues") +
+        ", Datei " + Math.round(d.size / 1024) + " KB" + (d.ago !== null ? ", zuletzt vor " + d.ago + " s" : "") + ".";
+    }
+  } catch (e) { /* Server weg */ }
+}
+rawInfo();
+setInterval(rawInfo, 5000);
 </script>
 </body>
 </html>

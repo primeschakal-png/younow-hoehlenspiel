@@ -47,7 +47,8 @@ Erste lauffähige Version ohne LLM und ohne YouNow.
 
 ## 6. YouNow-Anbindung
 
-- [ ] Im laufenden Stream prüfen: Aufbau von Chat, Geschenken und Likes im Browser (HTML-Ausschnitt oder Screenshot)
+- [ ] Im laufenden Stream prüfen: Aufbau von Chat, Geschenken und Likes. Weg: YouNow-WebSocket mitschneiden
+      (`userscript/younow-mitschnitt.user.js`, Rohdaten in `logs/younow_raw.jsonl`), dann Parser bauen
 - [ ] Klären: Wird angezeigt, WER geliked hat?
 - [ ] Userscript (Tampermonkey) mit automatischer Wiederverbindung
 - [ ] Chat-Quelle austauschbar halten (später Playwright)

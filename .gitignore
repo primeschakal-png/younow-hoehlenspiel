@@ -9,6 +9,7 @@ venv/
 
 # Spielstand und Logs
 save/
+logs/
 *.log
 
 # Betriebssystem
