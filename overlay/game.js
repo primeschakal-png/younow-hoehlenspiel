@@ -21,7 +21,7 @@ const THEMES = [
     },
     face: () => 41,               // Sandsteinmauer unten Mitte, ohne Pfeiler
     topFrame: () => 33,           // Sandsteinmauer oben Mitte, als Krone abgedunkelt
-    topTint: 0x8a7a66, rim: 0xe0c99a,
+    topTint: 0x8a7a66, rim: 0x3a2e22,
   },
   {   // gerade Ebenen: graue Ziegel und heller Plattenweg
     floor: (n, e, s, w, x, y) => {
@@ -30,7 +30,7 @@ const THEMES = [
     },
     face: () => 229,              // graue Ziegelmauer unten Mitte, ohne Schatten
     topFrame: () => 221,          // graue Ziegelmauer Mitte, als Krone abgedunkelt
-    topTint: 0x76727e, rim: 0xc4c0cc,
+    topTint: 0x76727e, rim: 0x25232a,
   },
 ];
 // Gegenstände laut magecity.json: Bildnummern von oben nach unten (eine Spalte)
@@ -102,10 +102,10 @@ function makeTextures(sc) {
   THEMES.forEach((t, ti) => {
     for (let m = 1; m < 16; m++) {
       g.clear();
-      g.fillStyle(t.rim, 0.85);
-      if (m & 1) g.fillRect(0, 0, TILE, 3);
-      if (m & 2) g.fillRect(TILE - 3, 0, 3, TILE);
-      if (m & 8) g.fillRect(0, 0, 3, TILE);
+      g.fillStyle(t.rim, 0.6);          // dunkle, schmale Kante statt heller Streifen
+      if (m & 1) g.fillRect(0, 0, TILE, 2);
+      if (m & 2) g.fillRect(TILE - 2, 0, 2, TILE);
+      if (m & 8) g.fillRect(0, 0, 2, TILE);
       g.generateTexture("rim" + ti + "_" + m, TILE, TILE);
     }
   });
