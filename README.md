@@ -4,6 +4,14 @@ Chat-Spiel für einen YouNow-Stream. Eine autonome, LLM-gesteuerte Figur erkunde
 
 Die vollständige Beschreibung steht im [Pflichtenheft](docs/pflichtenheft.md), der Stand der Arbeit im [Fahrplan](docs/fahrplan.md).
 
+## Starten (Windows)
+
+1. Python 3.10 oder neuer installieren (Haken bei "Add to PATH").
+2. `start.bat` doppelklicken. Beim ersten Start wird `.env` aus `.env.example` erzeugt, eine Python-Umgebung eingerichtet und `aiohttp` installiert.
+3. Der Browser öffnet `http://localhost:8000/?testchat=1`. Unten rechts ist der Test-Chat, dort `!links`, `!rechts`, `!geradeaus` oder `!zurueck` eintippen, sobald an einer Kreuzung abgestimmt wird. Mit verschiedenen Namen im kleinen Feld lassen sich mehrere Zuschauer simulieren.
+
+Für OBS: Browserquelle mit `http://localhost:8000/`, Größe 1280 x 720 (ohne Test-Chat).
+
 ## Aufbau
 
 ```
@@ -12,7 +20,7 @@ overlay/       HTML + Phaser: Karte, Figur, Abstimmung, Statusanzeigen (OBS-Brow
 userscript/    YouNow-Chatleser für Tampermonkey
 assets/        Grafiken (LPC) plus Credits
 docs/          Pflichtenheft und Fahrplan
-start.bat      startet llama-server und Python-Server (kommt mit dem ersten Code-Modul)
+start.bat      startet llama-server (wenn LLAMA_START=1) und Python-Server
 .env.example   Vorlage für Schlüssel und Einstellungen
 ```
 

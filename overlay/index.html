@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Höhlenspiel</title>
+  <link rel="stylesheet" href="static/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
+</head>
+<body>
+  <div id="stage">
+    <div id="game"></div>
+
+    <div id="hud">
+      <div id="depth">Ebene 1</div>
+      <div id="status"></div>
+    </div>
+
+    <div id="vote" class="hidden">
+      <div id="vote-title">Wohin soll ich gehen?</div>
+      <div id="vote-bars"></div>
+      <div id="vote-timer"></div>
+    </div>
+
+    <div id="log"></div>
+
+    <div id="chat">
+      <div id="chat-lines"></div>
+      <form id="testchat" class="hidden" autocomplete="off">
+        <input id="tc-user" value="Tester" size="9">
+        <input id="tc-text" placeholder="!links  !rechts  !geradeaus  !zurueck">
+        <button type="submit">Senden</button>
+      </form>
+    </div>
+  </div>
+  <script src="static/game.js"></script>
+</body>
+</html>
