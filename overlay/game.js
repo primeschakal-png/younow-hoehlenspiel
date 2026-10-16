@@ -14,27 +14,37 @@ const FACING_ANGLE = { N: 0, E: 90, S: 180, W: 270 };
 const F = (row, col) => row * 8 + col;
 const THEMES = [
   {   // ungerade Ebenen: Sandstein und Kopfsteinpflaster mit Rand
-    floor: (n, e, s, w) => F(n && !s ? 9 : s && !n ? 11 : 10, w && !e ? 0 : e && !w ? 2 : 1),
-    face: () => F(5, 1),          // einheitliche Sandsteinfront ohne Holzpfeiler
-    topFrame: () => F(4, 1),      // Mauerkrone: dieselben Steine, abgedunkelt
+    // Kachelnummern laut assets/tiles/magecity.json
+    floor: (n, e, s, w, x, y) => {
+      if (!(n && s) && !(e && w) && (n || s || e || w)) {
+        return F(n ? 9 : s ? 11 : 10, w ? 0 : e ? 2 : 1);   // Randsteine nur, wo eine Seite offen bleibt
+      }
+      const r = hash(x, y);
+      return r < 0.2 ? 75 : r < 0.35 ? 76 : 81;             // drei nahtlose Innenflächen
+    },
+    face: () => 41,               // Sandsteinmauer unten Mitte, ohne Pfeiler
+    topFrame: () => 33,           // Sandsteinmauer oben Mitte, als Krone abgedunkelt
     topTint: 0x8a7a66, rim: 0xe0c99a,
   },
   {   // gerade Ebenen: graue Ziegel und heller Plattenweg
-    floor: () => F(0, 1),
-    floorAlt: F(1, 1),
-    face: (x) => F(37, x % 2),    // graue Ziegel, Paare passen nahtlos aneinander
-    topFrame: (x) => F(36, x % 2),
+    floor: (n, e, s, w, x, y) => {
+      const r = hash(x, y);
+      return r < 0.04 ? 328 : r < 0.12 ? 9 : r < 0.5 ? 330 : 1; // Platten, selten mit Unkraut oder Pfütze
+    },
+    face: () => 229,              // graue Ziegelmauer unten Mitte, ohne Schatten
+    topFrame: () => 221,          // graue Ziegelmauer Mitte, als Krone abgedunkelt
     topTint: 0x76727e, rim: 0xc4c0cc,
   },
 ];
-// Gegenstände: Bildnummer, bei zwei Kacheln Höhe die obere zuerst
+// Gegenstände laut magecity.json: Bildnummern von oben nach unten (eine Spalte)
 const ENTITY_FRAMES = {
-  spring: [F(13, 1)],          // Wasserbecken
-  shrine: [F(12, 2), F(13, 2)], // Statue auf Sockel
-  chest: [F(9, 7)],            // Vorratssack
-  mushroom: [F(32, 6)],        // Kürbis
+  shrine: [98, 106, 114],      // statue_antik, 1x3
+  chest: [79],                 // Jutesack
+  mushroom: [262],             // Kürbis
 };
-const DECOR = [F(0, 2), F(0, 3), F(1, 2), F(1, 3), F(1, 4), F(41, 5), F(0, 4)];
+// Brunnen ist 2x2 groß, wird auf eine Kachel verkleinert gezeichnet
+const SPRING_FRAMES = [[22, 23], [30, 31]];
+const DECOR = [2, 3, 10, 11, 12, 333, 4, 85, 350];
 
 // LPC-Spritesheet: 64x64 je Bild, 13 Bilder pro Zeile, Richtungen je Animation in der Reihenfolge N, W, S, O
 const DIR_ROW = { N: 0, W: 1, S: 2, E: 3 };
@@ -256,9 +266,7 @@ class CaveScene extends Phaser.Scene {
         const n = !isFloor(x, y - 1), e = !isFloor(x + 1, y), so = !isFloor(x, y + 1), w = !isFloor(x - 1, y);
         if (isFloor(x, y)) {
           if (hasCity) {
-            let frame = theme.floor(n, e, so, w);
-            if (theme.floorAlt && hash(x, y) < 0.15) frame = theme.floorAlt;
-            img = this.add.image(x * TILE, y * TILE, "city", frame);
+            img = this.add.image(x * TILE, y * TILE, "city", theme.floor(n, e, so, w, x, y));
             // Deko nur auf Platzkacheln (gerade Koordinaten liegen nie auf dem Weg der Figur)
             if (x % 2 === 0 && y % 2 === 0 && hash(y, x) < 0.55) {
               const d = this.add.image(x * TILE, y * TILE, "city", DECOR[Math.floor(hash(x + 7, y) * DECOR.length)])
@@ -330,9 +338,14 @@ class CaveScene extends Phaser.Scene {
     const visible = !!(tile && tile.visible);
     const frames = this.textures.exists("city") ? ENTITY_FRAMES[e.kind] : null;
     const imgs = [];
-    if (frames) {
+    if (this.textures.exists("city") && e.kind === "spring") {
+      SPRING_FRAMES.forEach((row, ry) => row.forEach((f, rx) => {
+        imgs.push(this.add.image(e.x * TILE + rx * 16, e.y * TILE + ry * 16, "city", f)
+          .setOrigin(0).setScale(0.5).setDepth(3));
+      }));
+    } else if (frames) {
       frames.forEach((f, i) => {
-        const dy = i - (frames.length - 1);   // obere Kachel eine Reihe höher
+        const dy = i - (frames.length - 1);   // obere Kacheln weiter oben
         imgs.push(this.add.image(e.x * TILE, (e.y + dy) * TILE, "city", f).setOrigin(0).setDepth(3));
       });
     } else {
