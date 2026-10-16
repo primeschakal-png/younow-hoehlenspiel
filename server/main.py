@@ -158,6 +158,10 @@ async def settings_action(request):
         game.new_level()
     elif action == "new_hero":
         game.new_hero()
+    elif action == "sound_test":
+        game.emit({"type": "sound_test"})
+        await broadcast(game.flush())
+        return web.json_response({"ok": True, "text": f"Testton an {len(clients)} offene(s) Overlay(s) geschickt." if clients else "Kein Overlay offen. Erst http://localhost:8000/ im Browser oder in OBS öffnen."})
     elif action == "llm_test":
         t0 = time.monotonic()
         request.app["llm"].fail_until = 0.0   # Test immer wirklich senden
@@ -176,8 +180,18 @@ async def settings_action(request):
     return web.json_response({"ok": True})
 
 
+@web.middleware
+async def no_cache(request, handler):
+    """Overlay-Dateien nie aus dem Browser-Zwischenspeicher nehmen, sonst läuft nach
+    einem Update im Browser oder in OBS noch der alte Stand."""
+    resp = await handler(request)
+    if request.path == "/" or request.path.startswith("/static/") or request.path == "/einstellungen":
+        resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+    return resp
+
+
 def make_app():
-    app = web.Application()
+    app = web.Application(middlewares=[no_cache])
     app["game"] = Game()
     app["llm"] = LLMClient("http://127.0.0.1:8080/v1", "local")
     settings.apply(VALUES, app["game"], app["llm"])

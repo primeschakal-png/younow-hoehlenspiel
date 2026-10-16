@@ -391,7 +391,7 @@ const audio = {
       volume: this.sfx * (SFX_GAIN[kind] || 0.8),
       rate: 0.94 + Math.random() * 0.12,   // etwas Abwechslung
     });
-    if (delay) this.scene.time.delayedCall(delay, go);
+    if (delay) setTimeout(go, delay);   // nicht an die Spielzeit gebunden, läuft auch im Hintergrund-Tab
     else go();
   },
 
@@ -1318,6 +1318,11 @@ function handle(msg) {
     case "entity_remove":
       if (scene.entities.has(msg.id) && scene.entities.get(msg.id).kind === "chest") audio.play("chest");
       scene.removeEntity(msg.id);
+      break;
+    case "sound_test":
+      audio.play("coins");
+      audio.play("growl", 500);
+      showLog(audio.enabled ? (scene.sound.locked ? "Testton: Der Browser blockiert den Ton, einmal ins Bild klicken." : "Testton gespielt.") : "Testton: Ton ist in den Einstellungen aus.");
       break;
     case "audio":
       audio.configure(msg);
