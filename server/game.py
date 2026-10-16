@@ -1,6 +1,6 @@
 """Spielzustand: Figur, Bewegung, Nebel, Abstimmung, Überleben, Begegnungen, Lager.
 
-Etappe 2: noch ohne Charakter-System und LLM. Bei fehlenden Stimmen
+Etappe 4: mit Charakter-System, noch ohne LLM. Bei fehlenden Stimmen
 entscheidet vorerst der Zufall (in Etappe 5 das LLM).
 """
 
@@ -9,6 +9,7 @@ import time
 from datetime import datetime
 
 import entities as ent_mod
+from character import Character
 from hero import Hero
 from maze import BACK, LEFT, RIGHT, Maze
 
@@ -64,6 +65,9 @@ class Game:
         self.hall = []
         self.last_chat = time.monotonic()
         self.hero = Hero()
+        self.character = Character(self.hero.name, self.rnd)
+        self.last_decision = None
+        self.last_tick = time.monotonic()
         self.depth = 0
         self.new_level()
 
@@ -82,6 +86,23 @@ class Game:
     def emit_stats(self):
         self.emit({"type": "stats", "hero": self.hero.stats()})
 
+    def emit_character(self, force=False):
+        if self.character.changed_enough() or force:
+            self.emit(self.character.info())
+
+    def _archetype_changed(self, changed):
+        if changed:
+            self.log(f"{self.hero.name} ist jetzt ein {self.character.label()}.")
+            self.emit_character(force=True)
+        else:
+            self.emit_character()
+
+    def outcome(self, value):
+        self._archetype_changed(self.character.outcome(value, self.last_decision))
+
+    def courage(self, delta):
+        self._archetype_changed(self.character.courage_event(delta))
+
     # ---------- Ebenen und Helden ----------
 
     def new_level(self):
@@ -99,6 +120,7 @@ class Game:
         self.state = "walking"
         self.resume_at = 0.0
         self.camp_left_at = 0.0
+        self.last_decision = None
         self.revealed = set()
         self._reveal_around(self.pos, emit=False)
         self.emit(self.full_state())
@@ -106,13 +128,16 @@ class Game:
 
     def new_hero(self):
         self.hero = Hero()
+        self.character = Character(self.hero.name, self.rnd)
         self.depth = 0
         self.new_level()
-        self.log(f"Ein neuer Abenteurer steigt hinab: {self.hero.name}.")
+        c = self.character
+        self.log(f"Ein neuer Abenteurer steigt hinab: {self.hero.name}, {c.klass} {c.origin}, {c.traits[0]} und {c.traits[1]}.")
 
     def die(self, cause):
         self.hero.hp = 0
-        entry = {"name": self.hero.name, "depth": self.depth, "cause": cause, "gold": self.hero.gold}
+        entry = {"name": self.hero.name, "depth": self.depth, "cause": cause, "gold": self.hero.gold,
+                 "archetype": self.character.label()}
         self.hall.append(entry)
         self.hall = self.hall[-20:]
         self.state = "dead"
@@ -152,6 +177,7 @@ class Game:
             "camp": self._camp_info(),
             "dead": self.state == "dead",
             "hall": self.hall[-5:],
+            "character": self.character.info(),
         }
 
     def _vote_info(self):
@@ -205,8 +231,13 @@ class Game:
         self.hero.hp -= amount
         if self.hero.hp <= 0:
             self.die(cause)
-        else:
-            self.emit_stats()
+            return
+        self.emit_stats()
+        if self.hero.hp <= 4:
+            if self.character.near_death():
+                self._archetype_changed(True)
+            else:
+                self.emit_character()
 
     def remove_entity(self, cell):
         e = self.entities.pop(cell, None)
@@ -246,6 +277,11 @@ class Game:
 
     def tick(self):
         now = time.monotonic()
+        dt, self.last_tick = now - self.last_tick, now
+        if self.state != "dead":
+            self._archetype_changed(self.character.drift(dt))
+            if self.hero.hp >= self.hero.max_hp * 0.75:
+                self.character.recovered()
         if self.state == "dead":
             if now >= self.resume_at:
                 self.new_hero()
@@ -295,6 +331,8 @@ class Game:
     def _decide(self):
         if self.cell == self.maze.stairs:
             self.log("Eine Treppe! Es geht tiefer hinab.")
+            self.outcome(0.6)
+            self.courage(0.05)
             self.new_level()
             return
         if self.idle() and self._can_camp():
@@ -305,6 +343,7 @@ class Game:
         forward = [d for d in exits if d != back]
         if not forward:
             self.log("Sackgasse. Zurück.")
+            self.outcome(-0.25)
             self._go(back)
         elif len(forward) == 1:
             self._go(forward[0])
@@ -328,6 +367,7 @@ class Game:
         kind = e["kind"]
         cell = e["cell"]
         if kind == "spring":
+            self.outcome(0.8 if h.thirst < 60 or h.water == 0 else 0.2)
             h.thirst = 100.0
             h.water = h.max_water
             self.log(f"Eine Quelle! {h.name} trinkt und füllt die Flaschen.")
@@ -337,6 +377,7 @@ class Game:
         if kind == "chest":
             self.remove_entity(cell)
             loot = self._chest_loot()
+            self.outcome(0.6)
             self.log(f"{h.name} öffnet eine Truhe: {loot}.")
             self.emit_stats()
             self.pause(BAL["event_pause"])
@@ -347,9 +388,11 @@ class Game:
             if self.rnd.random() < 0.7:
                 h.hunger = min(100.0, h.hunger + BAL["mushroom_value"])
                 self.log(f"{h.name} isst ein paar Pilze. Nicht schlecht.")
+                self.outcome(0.3)
                 self.emit_stats()
             else:
                 self.log("Die Pilze waren giftig!")
+                self.outcome(-0.5)
                 self.damage(2, "an giftigen Pilzen gestorben")
             if self.state != "dead":
                 self.pause(BAL["event_pause"])
@@ -357,6 +400,7 @@ class Game:
 
         if kind == "shrine":
             self.remove_entity(cell)
+            self.outcome(1.0 if h.hp < h.max_hp * 0.6 else 0.4)
             h.hp = h.max_hp
             self.log(f"Ein alter Schrein. {h.name} fühlt sich wie neu geboren.")
             self.emit_stats()
@@ -368,9 +412,13 @@ class Game:
             target = 10 + self.depth // 2
             if self.dice("Falle! Ausweichen", target):
                 self.log(f"Eine Falle schnappt zu, aber {h.name} springt rechtzeitig weg.")
+                self.outcome(-0.2)
+                self.courage(0.02)
             else:
                 dmg = self.rnd.randint(1, 4) + self.depth // 2
                 self.log(f"Eine Falle! {h.name} verliert {dmg} Lebenspunkte.")
+                self.outcome(-0.8)
+                self.courage(-0.08)
                 self.damage(dmg, "in eine Falle gelaufen")
             if self.state != "dead":
                 self.pause(BAL["event_pause"])
@@ -390,10 +438,14 @@ class Game:
                 if gold:
                     loot += f", dazu {gold} Gold"
                 self.log(f"{h.name} besiegt {name}{loot}.")
+                self.outcome(0.4)
+                self.courage(0.08)
                 self.emit_stats()
             else:
                 dmg = self.rnd.randint(1, 4) + e["level"] // 2 + self.depth // 2
                 self.log(f"{name} erwischt {h.name}: {dmg} Schaden. Das Biest flieht.")
+                self.outcome(-0.8)
+                self.courage(-0.1)
                 self.damage(dmg, f"von {name} getötet")
             if self.state != "dead":
                 self.pause(BAL["event_pause"])
@@ -540,8 +592,13 @@ class Game:
                 score += 1.5 * hurt
             if "Knurren" in hint:
                 score -= 1.2 * hurt
+                score += 0.6 * self.character.courage      # Mutige suchen den Kampf
+                if self.character.archetype == "entertainer":
+                    score += 0.3
             if "stimmt hier nicht" in hint:
-                score -= 0.5 + hurt
+                score -= 0.5 + hurt + 0.3 * max(0.0, -self.character.courage)
+            if "Stille" == hint and self.character.archetype == "feigling":
+                score += 0.4
             if "Luftzug" in hint:
                 score += 0.3 if h.hp > h.max_hp * 0.5 else -0.2
             if label == "zurueck":
@@ -567,6 +624,8 @@ class Game:
         else:
             choice = self._own_choice()
             reason = "Keine Stimmen, die Figur folgt ihrem Gespür"
+        voters = [u for u, l in self.vote["votes"].items() if l == choice]
+        self.last_decision = {"source": "chat" if total else "self", "voters": voters, "label": choice}
         d = self.vote["options"][choice]
         self.emit({"type": "vote_end", "choice": choice, "reason": reason, "counts": counts})
         self.vote = None
@@ -582,6 +641,7 @@ class Game:
             return
         self.last_chat = time.monotonic()
         self.emit({"type": "chat", "user": user, "text": text})
+        self._archetype_changed(self.character.on_chat(user))
         if self.state == "camp":
             self._leave_camp(f"Besuch! {self.hero.name} packt das Lager zusammen.")
             return

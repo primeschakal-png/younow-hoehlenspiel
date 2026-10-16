@@ -31,11 +31,11 @@ Erste lauffähige Version ohne LLM und ohne YouNow.
 
 ## 4. Charakter-System
 
-- [ ] Persona-Erzeugung für jede neue Figur (6.1)
-- [ ] Zwei Achsen, vier Archetypen, Mitte, Hysterese (6.2)
-- [ ] Vertrauen in Chat, sich selbst, einzelne Zuschauer (6.3)
-- [ ] Grenzen und Rückwanderung zur Grundhaltung (6.4)
-- [ ] Anzeige als Kreuz mit Punkt im Overlay, Ankündigung beim Archetyp-Wechsel
+- [x] Persona-Erzeugung für jede neue Figur (6.1)
+- [x] Zwei Achsen, vier Archetypen, Mitte, Hysterese (6.2)
+- [x] Vertrauen in Chat, sich selbst, einzelne Zuschauer (6.3)
+- [x] Grenzen und Rückwanderung zur Grundhaltung (6.4)
+- [x] Anzeige als Kreuz mit Punkt im Overlay, Ankündigung beim Archetyp-Wechsel
 
 ## 5. LLM-Anbindung
 

@@ -375,7 +375,8 @@ function renderHall(hall) {
   list.innerHTML = "";
   for (const h of (hall || []).slice().reverse()) {
     const li = document.createElement("li");
-    li.textContent = h.name + ", Ebene " + h.depth + ", " + h.cause + (h.gold ? ", " + h.gold + " Gold" : "");
+    li.textContent = h.name + (h.archetype ? " (" + h.archetype + ")" : "") + ", Ebene " + h.depth + ", " + h.cause +
+      (h.gold ? ", " + h.gold + " Gold" : "");
     list.appendChild(li);
   }
 }
@@ -389,6 +390,37 @@ function showDeath(m) {
   scene.setCamp(null);
 }
 
+let lastArchetype = null;
+
+function trustWord(v) {
+  if (v > 0.5) return "hoch";
+  if (v > 0.15) return "gut";
+  if (v < -0.5) return "kaum";
+  if (v < -0.15) return "gering";
+  return "neutral";
+}
+
+function renderCharacter(c) {
+  if (!c) return;
+  const dot = el("char-dot");
+  dot.style.left = (50 + c.audience * 45) + "%";
+  dot.style.top = (50 - c.courage * 45) + "%";
+  const map = { held: "q-held", entertainer: "q-ent", feigling: "q-feig", schmeichler: "q-schm" };
+  document.querySelectorAll("#char-grid .q").forEach((q) => q.classList.remove("active"));
+  if (map[c.archetype]) document.querySelector("#char-grid ." + map[c.archetype]).classList.add("active");
+  el("char-label").textContent = c.label;
+  el("char-trust").textContent = "Vertrauen in den Chat: " + trustWord(c.trust_chat) +
+    ", in sich: " + trustWord(c.self_trust);
+  el("hero-persona").textContent = c.persona + ", " + c.traits.join(" und ");
+  if (lastArchetype !== null && lastArchetype !== c.archetype) {
+    const box = el("char");
+    box.classList.remove("flash");
+    void box.offsetWidth;
+    box.classList.add("flash");
+  }
+  lastArchetype = c.archetype;
+}
+
 // ---------------- Nachrichten ----------------
 
 function handle(msg) {
@@ -400,6 +432,8 @@ function handle(msg) {
     case "state":
       el("depth").textContent = "Ebene " + msg.depth;
       renderStats(msg.hero);
+      lastArchetype = null;
+      renderCharacter(msg.character);
       scene.buildLevel(msg);
       scene.setCamp(msg.camp);
       if (msg.vote) startVote(msg.vote.options, msg.vote.remaining, msg.vote.counts, msg.vote.hints);
@@ -409,6 +443,9 @@ function handle(msg) {
       break;
     case "stats":
       renderStats(msg.hero);
+      break;
+    case "character":
+      renderCharacter(msg);
       break;
     case "entity_remove":
       scene.removeEntity(msg.id);

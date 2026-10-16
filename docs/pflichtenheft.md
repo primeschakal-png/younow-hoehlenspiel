@@ -119,6 +119,16 @@ Mitte: Abenteurer. Je weiter außen, desto extremer die Ausprägung.
 9. Userscript
 10. Phaser-Overlay
 
+### 8.2a YouNow-Chat im Browser (Stand 16.10.2026)
+
+- Jede Chatnachricht ist ein Block mit der Klasse `comment`.
+- Name: `.user-card__username-level span.truncate` (Text und `title`-Attribut).
+- Text: `.user-card__body`.
+- Level: `app-user-level p`.
+- Rolle: zusätzliche Klassen am `comment`-Block, z.B. `broadcaster-mod`. Badges unter `user-badges`.
+- Angular-Attribute wie `_ngcontent-ng-c…` ändern sich bei Updates und werden nicht verwendet.
+- OFFEN: Aufbau einer Geschenk-Nachricht, Sichtbarkeit von Likes mit Namen.
+
 ### 8.3 Robustheit
 
 - Spiel und Stream laufen unabhängig. Ein Stream-Abbruch beeinflusst den Spielzustand nicht.
