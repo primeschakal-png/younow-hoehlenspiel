@@ -15,14 +15,16 @@ const F = (row, col) => row * 8 + col;
 const THEMES = [
   {   // ungerade Ebenen: Sandstein und Kopfsteinpflaster mit Rand
     floor: (n, e, s, w) => F(n && !s ? 9 : s && !n ? 11 : 10, w && !e ? 0 : e && !w ? 2 : 1),
-    faces: [F(5, 1), F(5, 2), F(5, 1), F(5, 2), F(5, 4), F(5, 6)],
-    top: 0x2a2119, rim: 0x8c7452,
+    face: () => F(5, 1),          // einheitliche Sandsteinfront ohne Holzpfeiler
+    topFrame: () => F(4, 1),      // Mauerkrone: dieselben Steine, abgedunkelt
+    topTint: 0x8a7a66, rim: 0xe0c99a,
   },
   {   // gerade Ebenen: graue Ziegel und heller Plattenweg
     floor: () => F(0, 1),
     floorAlt: F(1, 1),
-    faces: [F(37, 0), F(37, 1), F(37, 0), F(37, 1), F(36, 0)],
-    top: 0x1c1b20, rim: 0x6b6875,
+    face: (x) => F(37, x % 2),    // graue Ziegel, Paare passen nahtlos aneinander
+    topFrame: (x) => F(36, x % 2),
+    topTint: 0x76727e, rim: 0xc4c0cc,
   },
 ];
 // Gegenstände: Bildnummer, bei zwei Kacheln Höhe die obere zuerst
@@ -89,17 +91,15 @@ function makeTextures(sc) {
     g.generateTexture("floor" + v, TILE, TILE);
   }
 
-  // Mauerkronen: Rand an den Seiten, an die Boden grenzt (N=1, E=2, W=8), je Thema
+  // Kanten der Mauerkronen: heller Rand an den Seiten, an die Boden grenzt (N=1, E=2, W=8)
   THEMES.forEach((t, ti) => {
-    for (let m = 0; m < 16; m++) {
+    for (let m = 1; m < 16; m++) {
       g.clear();
-      g.fillStyle(t.top);
-      g.fillRect(0, 0, TILE, TILE);
-      g.fillStyle(t.rim);
-      if (m & 1) g.fillRect(0, 0, TILE, 4);
-      if (m & 2) g.fillRect(TILE - 4, 0, 4, TILE);
-      if (m & 8) g.fillRect(0, 0, 4, TILE);
-      g.generateTexture("top" + ti + "_" + m, TILE, TILE);
+      g.fillStyle(t.rim, 0.85);
+      if (m & 1) g.fillRect(0, 0, TILE, 3);
+      if (m & 2) g.fillRect(TILE - 3, 0, 3, TILE);
+      if (m & 8) g.fillRect(0, 0, 3, TILE);
+      g.generateTexture("rim" + ti + "_" + m, TILE, TILE);
     }
   });
 
@@ -247,6 +247,7 @@ class CaveScene extends Phaser.Scene {
     const theme = THEMES[ti];
     if (this.decor) this.decor.forEach((d) => d.img.destroy());
     this.decor = [];
+    const rims = [];
 
     for (let y = 0; y < s.th; y++) {
       const row = [];
@@ -269,15 +270,23 @@ class CaveScene extends Phaser.Scene {
           }
         } else if (hasCity && !so) {
           // Boden darunter: Mauerfront
-          const faces = theme.faces;
-          img = this.add.image(x * TILE, y * TILE, "city", faces[Math.floor(hash(x, y) * faces.length)]);
+          img = this.add.image(x * TILE, y * TILE, "city", theme.face(x));
+        } else if (hasCity) {
+          // Mauerkrone: abgedunkelte Steine, helle Kante zur Gasse hin
+          img = this.add.image(x * TILE, y * TILE, "city", theme.topFrame(x)).setTint(theme.topTint);
+          const m = (!n ? 1 : 0) | (!e ? 2 : 0) | (!w ? 8 : 0);
+          if (m) {
+            const rim = this.add.image(x * TILE, y * TILE, "rim" + ti + "_" + m).setOrigin(0).setVisible(false);
+            rims.push(rim);
+            img.rim = rim;
+          }
         } else {
           let m = 0;
           if (!n) m |= 1;
           if (!e) m |= 2;
           if (!so) m |= 4;
           if (!w) m |= 8;
-          img = this.add.image(x * TILE, y * TILE, hasCity ? "top" + ti + "_" + (m & 11) : "wall" + m);
+          img = this.add.image(x * TILE, y * TILE, "wall" + m);
         }
         img.setOrigin(0).setVisible(false);
         this.layer.add(img);
@@ -285,6 +294,7 @@ class CaveScene extends Phaser.Scene {
       }
       this.tileImgs.push(row);
     }
+    rims.forEach((r) => this.layer.add(r));   // Kanten über den Kacheln zeichnen
 
     this.stairsPos = s.stairs;
     this.stairsImg = this.add.image(s.stairs[0] * TILE, s.stairs[1] * TILE, "stairs")
@@ -345,10 +355,12 @@ class CaveScene extends Phaser.Scene {
       const img = this.tileImgs[y] && this.tileImgs[y][x];
       if (!img || img.visible) continue;
       img.setVisible(true);
+      if (img.rim) img.rim.setVisible(true);
       shown.add(x + "," + y);
       if (!instant) {
-        img.setAlpha(0);
-        this.tweens.add({ targets: img, alpha: 1, duration: 350 });
+        const targets = img.rim ? [img, img.rim] : [img];
+        targets.forEach((t) => t.setAlpha(0));
+        this.tweens.add({ targets, alpha: 1, duration: 350 });
       }
       if (this.stairsPos && x === this.stairsPos[0] && y === this.stairsPos[1]) {
         this.stairsImg.setVisible(true);
