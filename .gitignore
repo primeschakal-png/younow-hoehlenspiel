@@ -1,0 +1,16 @@
+# Schlüssel und lokale Einstellungen
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Spielstand und Logs
+save/
+*.log
+
+# Betriebssystem
+.DS_Store
+Thumbs.db
