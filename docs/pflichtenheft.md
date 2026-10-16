@@ -200,3 +200,10 @@ llama-server und Webserver. Gespeichert wird in `.env` nur die Abweichung von `.
 Leerlauf: Abstimmungszeit volle Länge, solange in der letzten Minute jemand geschrieben hat, danach linear
 kürzer bis `IDLE_VOTE_SECONDS` nach `IDLE_MINUTES`. Ohne Stimmen und mit fertiger LLM-Wahl endet die
 Abstimmung nach 3 Sekunden. Lager höchstens `CAMP_MAX_MINUTES`, danach mindestens `CAMP_PAUSE_MINUTES` Erkunden.
+
+## Gedächtnis gegen Im-Kreis-Laufen
+
+Die Figur merkt sich pro Ebene, an welchen Kreuzungen sie war. Für jede Richtung zählt eine Breitensuche die
+unbekannten Zellen in den nächsten 10 Schritten und den Abstand zur nächsten unbekannten Zelle. Richtungen ohne
+Neues bekommen im Hinweis „(schon erkundet)“, das sehen Chat und LLM. Die eigene Wahl bevorzugt Unbekanntes,
+Bedürfnisse (Wasser, Essen, Heilung) können trotzdem zu bekannten Orten führen.

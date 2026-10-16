@@ -273,6 +273,7 @@ class Game:
         self.last_decision = None
         self.llm_queue = []
         self.revealed = set()
+        self.visited = {self.cell}      # Gedächtnis: Kreuzungen dieser Ebene, an denen die Figur schon war
         self._reveal_around(self.pos, emit=False)
         self.emit(self.full_state())
         area = area_for(self.depth)
@@ -501,7 +502,34 @@ class Game:
             return
         self._decide()
 
+    def _unknown_ahead(self, d, near=10, far=80):
+        """Breitensuche in Richtung d, ohne über die aktuelle Zelle zurückzugehen.
+        Liefert (unbekannte Zellen in den nächsten near Schritten, Abstand zur nächsten unbekannten Zelle)."""
+        start = self.maze.neighbor(self.cell, d)
+        seen = {self.cell, start}
+        frontier = [start]
+        unknown = 0 if start in self.visited else 1
+        nearest = None if start in self.visited else 1
+        for step in range(2, far + 1):
+            nxt = []
+            for c in frontier:
+                for e in self.maze.exits(c):
+                    n = self.maze.neighbor(c, e)
+                    if n not in seen:
+                        seen.add(n)
+                        nxt.append(n)
+                        if n not in self.visited:
+                            if step <= near:
+                                unknown += 1
+                            if nearest is None:
+                                nearest = step
+            frontier = nxt
+            if not frontier or (nearest is not None and step >= near):
+                break
+        return unknown, nearest
+
     def _arrive(self):
+        self.visited.add(self.cell)
         e = self.entities.get(self.cell)
         if e:
             self._encounter(e)
@@ -782,11 +810,15 @@ class Game:
         options = {self._relative(d): d for d in exits}
         labels = [l for l in LABEL_ORDER if l in options]
         hints = {}
+        unknown = {}
         for label, d in options.items():
             kinds = ent_mod.look_ahead(self.maze, self.cell, d, self.entities)
             if self.maze.neighbor(self.cell, d) == self.maze.stairs and "stairs" not in kinds:
                 kinds.append("stairs")
             hints[label] = ent_mod.hint_text(kinds, self.rnd)
+            unknown[label] = self._unknown_ahead(d)
+            if unknown[label][0] == 0:
+                hints[label] += " (schon erkundet)"
             if self.underground():
                 hints[label] = hints[label].replace("nach Gemüse", "nach Pilzen")
         seconds = self.vote_duration()
@@ -796,6 +828,7 @@ class Game:
             "options": options,
             "labels": labels,
             "hints": hints,
+            "unknown": unknown,
             "votes": {},
             "ends": time.monotonic() + seconds,
         }
@@ -804,7 +837,9 @@ class Game:
         opts = "; ".join(f"{l}: {hints[l]}" for l in labels)
         task = (
             f"Du stehst an einer Kreuzung. Möglichkeiten mit dem, was du wahrnimmst: {opts}. "
-            "Die Hinweise sind nicht immer zuverlässig. Der Chat stimmt gerade ab. "
+            "Die Hinweise sind nicht immer zuverlässig. Wo (schon erkundet) steht, warst du schon, "
+            "dort gibt es nichts Neues zu entdecken, außer du brauchst etwas, das du dort gesehen hast. "
+            "Du willst die Treppe nach unten finden. Der Chat stimmt gerade ab. "
             "Antworte als JSON mit genau diesen Feldern: "
             '{"kommentar": "was du jetzt laut zum Chat sagst", '
             f'"wahl": "eine von: {", ".join(labels)}, falls niemand abstimmt", '
@@ -839,7 +874,15 @@ class Game:
                     score += 0.3
             if "stimmt hier nicht" in hint:
                 score -= 0.5 + hurt + 0.3 * max(0.0, -self.character.courage)
-            if "Stille" == hint and self.character.archetype == "feigling":
+            # Neugier: unbekannte Wege bevorzugen, bekannte meiden
+            unknown, nearest = self.vote.get("unknown", {}).get(label, (1, 1))
+            if unknown:
+                score += 0.4 + 0.15 * min(unknown, 6)
+            elif nearest is not None:
+                score -= 0.6 + 0.05 * min(nearest, 20)   # alles bekannt, aber dahinter gibt es noch Neues
+            else:
+                score -= 1.5                              # Sackgasse im Bekannten
+            if hint.startswith("Stille") and self.character.archetype == "feigling":
                 score += 0.4
             if "Luftzug" in hint:
                 score += 0.3 if h.hp > h.max_hp * 0.5 else -0.2
