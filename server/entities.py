@@ -12,16 +12,16 @@ _ids = itertools.count(1)
 
 MONSTERS = [
     "Ratte", "Fledermaus", "Riesenspinne", "Goblin",
-    "Höhlenwolf", "Skelett", "Grottenschrat", "Oger",
+    "Streunender Wolf", "Skelett", "Steingolem", "Oger",
 ]
 
 HINTS = {
-    "spring": "Wasser tropft",
-    "chest": "Etwas glitzert im Dunkeln",
+    "spring": "Wasser plätschert",
+    "chest": "Etwas glitzert im Schatten",
     "monster": "Ein Knurren",
     "trap": "Etwas stimmt hier nicht",
     "shrine": "Ein schwaches Leuchten",
-    "mushroom": "Es riecht modrig",
+    "mushroom": "Es riecht nach Gemüse",
     "stairs": "Ein kühler Luftzug von unten",
 }
 

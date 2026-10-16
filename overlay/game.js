@@ -2,12 +2,43 @@
 // Stellt nur dar, was der Server schickt. Die Logik liegt komplett in Python.
 
 const TILE = 32;
+const ZOOM = Number(new URLSearchParams(location.search).get("zoom")) || 2;   // Pixelgrafik doppelt groß
 const params = new URLSearchParams(location.search);
 const TESTCHAT = params.has("testchat");
 
 const LABELS = { links: "Links", geradeaus: "Geradeaus", rechts: "Rechts", zurueck: "Zurück" };
 const COMMAND = { links: "!links", geradeaus: "!geradeaus", rechts: "!rechts", zurueck: "!zurueck" };
 const FACING_ANGLE = { N: 0, E: 90, S: 180, W: 270 };
+
+// Mage City Arcanos (Hyptosis, CC0): 8 Kacheln pro Zeile, Bildnummer = Zeile * 8 + Spalte
+const F = (row, col) => row * 8 + col;
+const THEMES = [
+  {   // ungerade Ebenen: Sandstein und Kopfsteinpflaster mit Rand
+    floor: (n, e, s, w) => F(n && !s ? 9 : s && !n ? 11 : 10, w && !e ? 0 : e && !w ? 2 : 1),
+    faces: [F(5, 1), F(5, 2), F(5, 1), F(5, 2), F(5, 4), F(5, 6)],
+    top: 0x2a2119, rim: 0x8c7452,
+  },
+  {   // gerade Ebenen: graue Ziegel und heller Plattenweg
+    floor: () => F(0, 1),
+    floorAlt: F(1, 1),
+    faces: [F(37, 0), F(37, 1), F(37, 0), F(37, 1), F(36, 0)],
+    top: 0x1c1b20, rim: 0x6b6875,
+  },
+];
+// Gegenstände: Bildnummer, bei zwei Kacheln Höhe die obere zuerst
+const ENTITY_FRAMES = {
+  spring: [F(13, 1)],          // Wasserbecken
+  shrine: [F(12, 2), F(13, 2)], // Statue auf Sockel
+  chest: [F(9, 7)],            // Vorratssack
+  mushroom: [F(32, 6)],        // Kürbis
+};
+const DECOR = [F(0, 2), F(0, 3), F(1, 2), F(1, 3), F(1, 4), F(41, 5), F(0, 4)];
+
+function hash(x, y) {
+  let h = (x * 374761393 + y * 668265263) | 0;
+  h = (h ^ (h >>> 13)) * 1274126177;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
 
 let ws = null;
 let scene = null;
@@ -36,7 +67,21 @@ function makeTextures(sc) {
     g.generateTexture("floor" + v, TILE, TILE);
   }
 
-  // Wand-Autotiling: Bit gesetzt, wenn der Nachbar Boden ist (N=1, E=2, S=4, W=8)
+  // Mauerkronen: Rand an den Seiten, an die Boden grenzt (N=1, E=2, W=8), je Thema
+  THEMES.forEach((t, ti) => {
+    for (let m = 0; m < 16; m++) {
+      g.clear();
+      g.fillStyle(t.top);
+      g.fillRect(0, 0, TILE, TILE);
+      g.fillStyle(t.rim);
+      if (m & 1) g.fillRect(0, 0, TILE, 4);
+      if (m & 2) g.fillRect(TILE - 4, 0, 4, TILE);
+      if (m & 8) g.fillRect(0, 0, 4, TILE);
+      g.generateTexture("top" + ti + "_" + m, TILE, TILE);
+    }
+  });
+
+  // Platzhalter-Wände (falls die Kacheldatei fehlt)
   for (let m = 0; m < 16; m++) {
     g.clear();
     g.fillStyle(m ? 0x2b2632 : 0x15131a);
@@ -132,6 +177,10 @@ class CaveScene extends Phaser.Scene {
     this.sayTimer = null;
   }
 
+  preload() {
+    this.load.spritesheet("city", "assets/tiles/magecity.png", { frameWidth: 32, frameHeight: 32 });
+  }
+
   create() {
     makeTextures(this);
     this.actText = this.add.text(0, 0, "", {
@@ -140,7 +189,7 @@ class CaveScene extends Phaser.Scene {
       color: "#f3e7c8",
       backgroundColor: "rgba(15,12,20,0.75)",
       padding: { x: 6, y: 3 },
-    }).setOrigin(0.5, 1).setDepth(20).setVisible(false);
+    }).setOrigin(0.5, 1).setDepth(20).setVisible(false).setResolution(ZOOM).setScale(1 / ZOOM);
     this.campfire = this.add.image(0, 0, "campfire").setDepth(9).setVisible(false);
     this.sayText = this.add.text(0, 0, "", {
       fontFamily: "Trebuchet MS, Verdana, sans-serif",
@@ -150,7 +199,7 @@ class CaveScene extends Phaser.Scene {
       padding: { x: 9, y: 6 },
       wordWrap: { width: 340 },
       align: "center",
-    }).setOrigin(0.5, 1).setDepth(21).setVisible(false);
+    }).setOrigin(0.5, 1).setDepth(21).setVisible(false).setResolution(ZOOM).setScale(1 / ZOOM);
     scene = this;
     const queued = pending;
     pending = [];
@@ -164,22 +213,44 @@ class CaveScene extends Phaser.Scene {
     this.tileImgs = [];
     const rows = s.tiles;
     const isFloor = (x, y) => x >= 0 && y >= 0 && x < s.tw && y < s.th && rows[y][x] === ".";
+    const hasCity = this.textures.exists("city");
+    const ti = (s.depth + 1) % 2;
+    const theme = THEMES[ti];
+    if (this.decor) this.decor.forEach((d) => d.img.destroy());
+    this.decor = [];
 
     for (let y = 0; y < s.th; y++) {
       const row = [];
       for (let x = 0; x < s.tw; x++) {
-        let key;
+        let img;
+        const n = !isFloor(x, y - 1), e = !isFloor(x + 1, y), so = !isFloor(x, y + 1), w = !isFloor(x - 1, y);
         if (isFloor(x, y)) {
-          key = "floor" + ((x * 7 + y * 13) % 2);
+          if (hasCity) {
+            let frame = theme.floor(n, e, so, w);
+            if (theme.floorAlt && hash(x, y) < 0.15) frame = theme.floorAlt;
+            img = this.add.image(x * TILE, y * TILE, "city", frame);
+            // Deko nur auf Platzkacheln (gerade Koordinaten liegen nie auf dem Weg der Figur)
+            if (x % 2 === 0 && y % 2 === 0 && hash(y, x) < 0.55) {
+              const d = this.add.image(x * TILE, y * TILE, "city", DECOR[Math.floor(hash(x + 7, y) * DECOR.length)])
+                .setOrigin(0).setDepth(2).setVisible(false);
+              this.decor.push({ img: d, x, y });
+            }
+          } else {
+            img = this.add.image(x * TILE, y * TILE, "floor" + ((x * 7 + y * 13) % 2));
+          }
+        } else if (hasCity && !so) {
+          // Boden darunter: Mauerfront
+          const faces = theme.faces;
+          img = this.add.image(x * TILE, y * TILE, "city", faces[Math.floor(hash(x, y) * faces.length)]);
         } else {
           let m = 0;
-          if (isFloor(x, y - 1)) m |= 1;
-          if (isFloor(x + 1, y)) m |= 2;
-          if (isFloor(x, y + 1)) m |= 4;
-          if (isFloor(x - 1, y)) m |= 8;
-          key = "wall" + m;
+          if (!n) m |= 1;
+          if (!e) m |= 2;
+          if (!so) m |= 4;
+          if (!w) m |= 8;
+          img = this.add.image(x * TILE, y * TILE, hasCity ? "top" + ti + "_" + (m & 11) : "wall" + m);
         }
-        const img = this.add.image(x * TILE, y * TILE, key).setOrigin(0).setVisible(false);
+        img.setOrigin(0).setVisible(false);
         this.layer.add(img);
         row.push(img);
       }
@@ -190,7 +261,7 @@ class CaveScene extends Phaser.Scene {
     this.stairsImg = this.add.image(s.stairs[0] * TILE, s.stairs[1] * TILE, "stairs")
       .setOrigin(0).setDepth(1).setVisible(false);
 
-    for (const e of this.entities.values()) e.img.destroy();
+    for (const e of this.entities.values()) e.imgs.forEach((i) => i.destroy());
     this.entities.clear();
     for (const e of s.entities || []) this.addEntity(e);
 
@@ -206,20 +277,31 @@ class CaveScene extends Phaser.Scene {
     this.cameras.main.removeBounds();
     this.moveFigure(s.pos, s.facing, true);
     this.cameras.main.startFollow(this.figure, true, 0.12, 0.12);
-    this.cameras.main.setFollowOffset(0, -90);
+    this.cameras.main.setZoom(ZOOM);
+    this.cameras.main.setFollowOffset(0, -90 / ZOOM);
   }
 
   addEntity(e) {
-    const img = this.add.image(e.x * TILE, e.y * TILE, "ent_" + e.kind).setOrigin(0).setDepth(2);
     const tile = this.tileImgs[e.y] && this.tileImgs[e.y][e.x];
-    img.setVisible(!!(tile && tile.visible));
-    this.entities.set(e.id, { img, x: e.x, y: e.y });
+    const visible = !!(tile && tile.visible);
+    const frames = this.textures.exists("city") ? ENTITY_FRAMES[e.kind] : null;
+    const imgs = [];
+    if (frames) {
+      frames.forEach((f, i) => {
+        const dy = i - (frames.length - 1);   // obere Kachel eine Reihe höher
+        imgs.push(this.add.image(e.x * TILE, (e.y + dy) * TILE, "city", f).setOrigin(0).setDepth(3));
+      });
+    } else {
+      imgs.push(this.add.image(e.x * TILE, e.y * TILE, "ent_" + e.kind).setOrigin(0).setDepth(3));
+    }
+    imgs.forEach((img) => img.setVisible(visible));
+    this.entities.set(e.id, { imgs, x: e.x, y: e.y });
   }
 
   removeEntity(id) {
     const e = this.entities.get(id);
     if (!e) return;
-    this.tweens.add({ targets: e.img, alpha: 0, duration: 400, onComplete: () => e.img.destroy() });
+    this.tweens.add({ targets: e.imgs, alpha: 0, duration: 400, onComplete: () => e.imgs.forEach((i) => i.destroy()) });
     this.entities.delete(id);
   }
 
@@ -239,7 +321,10 @@ class CaveScene extends Phaser.Scene {
       }
     }
     for (const e of this.entities.values()) {
-      if (shown.has(e.x + "," + e.y)) e.img.setVisible(true);
+      if (shown.has(e.x + "," + e.y)) e.imgs.forEach((i) => i.setVisible(true));
+    }
+    for (const d of this.decor || []) {
+      if (shown.has(d.x + "," + d.y)) d.img.setVisible(true);
     }
   }
 
@@ -266,17 +351,17 @@ class CaveScene extends Phaser.Scene {
 
   update() {
     if (!this.figure) return;
-    let top = this.figure.y - 20;
+    let top = this.figure.y - 18;
     if (this.actText.visible) {
       this.actText.setPosition(this.figure.x, top);
-      top -= this.actText.height + 6;
+      top -= this.actText.displayHeight + 3;
     }
     if (this.sayText.visible) {
       // im sichtbaren Bereich halten
-      const cam = this.cameras.main;
-      const half = this.sayText.width / 2;
-      const x = Math.max(cam.scrollX + half + 8, Math.min(cam.scrollX + cam.width - half - 8, this.figure.x));
-      const y = Math.max(cam.scrollY + this.sayText.height + 8, top);
+      const view = this.cameras.main.worldView;
+      const half = this.sayText.displayWidth / 2;
+      const x = Math.max(view.x + half + 4, Math.min(view.right - half - 4, this.figure.x));
+      const y = Math.max(view.y + this.sayText.displayHeight + 4, top);
       this.sayText.setPosition(x, y);
     }
   }

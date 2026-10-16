@@ -44,7 +44,8 @@ BAL = {
 }
 
 SYSTEM_RULES = (
-    "Du spielst eine Figur in einem Höhlen-Erkundungsspiel, das live auf YouNow gestreamt wird. "
+    "Du spielst eine Figur in einem Erkundungsspiel, das live auf YouNow gestreamt wird. "
+    "Du erkundest das Labyrinth aus Gassen, Plätzen und Gewölben einer verlassenen Magierstadt. "
     "Die Zuschauer stimmen an Kreuzungen ab, wohin du gehst, und können dich ansprechen. "
     "Dein oberstes Ziel ist, so lange wie möglich zu überleben und weiterzustreamen, "
     "aber du willst auch etwas erleben, sonst schaut keiner zu. "
@@ -134,7 +135,7 @@ class Game:
     def situation(self):
         h = self.hero
         parts = [
-            f"Du bist auf Ebene {self.depth} des Höhlenlabyrinths.",
+            f"Du bist auf Ebene {self.depth} der verlassenen Magierstadt, je tiefer, desto älter und gefährlicher.",
             f"Leben: {h.hp} von {h.max_hp}.",
             "Du bist " + need_word(h.hunger, ["satt", "leicht hungrig", "hungrig", "am Verhungern"]) + " und "
             + need_word(h.thirst, ["nicht durstig", "leicht durstig", "durstig", "am Verdursten"]) + ".",
@@ -455,7 +456,7 @@ class Game:
 
     def _decide(self):
         if self.cell == self.maze.stairs:
-            self.log("Eine Treppe! Es geht tiefer hinab.")
+            self.log("Ein Abgang in die Tiefe! Es geht weiter hinab.")
             self.outcome(0.6)
             self.courage(0.05)
             self.new_level()
@@ -495,7 +496,7 @@ class Game:
             self.outcome(0.8 if h.thirst < 60 or h.water == 0 else 0.2)
             h.thirst = 100.0
             h.water = h.max_water
-            self.log(f"Eine Quelle! {h.name} trinkt und füllt die Flaschen.")
+            self.log(f"Ein Brunnen! {h.name} trinkt und füllt die Flaschen.")
             self.emit_stats()
             return  # Quellen bleiben, kein Halt nötig
 
@@ -503,8 +504,8 @@ class Game:
             self.remove_entity(cell)
             loot = self._chest_loot()
             self.outcome(0.6)
-            self.log(f"{h.name} öffnet eine Truhe: {loot}.")
-            self.comment(f"Du hast eine Truhe geöffnet und darin gefunden: {loot}.")
+            self.log(f"{h.name} durchsucht einen Vorratssack: {loot}.")
+            self.comment(f"Du hast einen alten Vorratssack durchsucht und darin gefunden: {loot}.")
             self.emit_stats()
             self.pause(BAL["event_pause"])
             return
@@ -513,14 +514,14 @@ class Game:
             self.remove_entity(cell)
             if self.rnd.random() < 0.7:
                 h.hunger = min(100.0, h.hunger + BAL["mushroom_value"])
-                self.log(f"{h.name} isst ein paar Pilze. Nicht schlecht.")
+                self.log(f"{h.name} findet Gemüse am Wegesrand und isst es. Nicht schlecht.")
                 self.outcome(0.3)
                 self.emit_stats()
             else:
-                self.log("Die Pilze waren giftig!")
-                self.comment("Du hast giftige Pilze gegessen und dir ist übel.")
+                self.log("Das Gemüse war verdorben!")
+                self.comment("Du hast verdorbenes Gemüse gegessen und dir ist übel.")
                 self.outcome(-0.5)
-                self.damage(2, "an giftigen Pilzen gestorben")
+                self.damage(2, "an verdorbenem Essen gestorben")
             if self.state != "dead":
                 self.pause(BAL["event_pause"])
             return
@@ -529,8 +530,8 @@ class Game:
             self.remove_entity(cell)
             self.outcome(1.0 if h.hp < h.max_hp * 0.6 else 0.4)
             h.hp = h.max_hp
-            self.log(f"Ein alter Schrein. {h.name} fühlt sich wie neu geboren.")
-            self.comment("Ein alter Schrein hat dich vollständig geheilt.")
+            self.log(f"Eine alte Statue leuchtet auf. {h.name} fühlt sich wie neu geboren.")
+            self.comment("Eine leuchtende alte Statue hat dich vollständig geheilt.")
             self.emit_stats()
             self.pause(BAL["event_pause"])
             return
@@ -566,15 +567,15 @@ class Game:
                 h.gold += gold
                 if gold:
                     loot += f", dazu {gold} Gold"
-                self.log(f"{h.name} besiegt {name}{loot}.")
-                self.comment(f"Du hast im Kampf eine {name} besiegt.")
+                self.log(f"{h.name} besiegt: {name}{loot}.")
+                self.comment(f"Du hast im Kampf gegen {name} gewonnen.")
                 self.outcome(0.4)
                 self.courage(0.08)
                 self.emit_stats()
             else:
                 dmg = self.rnd.randint(1, 4) + e["level"] // 2 + self.depth // 2
-                self.log(f"{name} erwischt {h.name}: {dmg} Schaden. Das Biest flieht.")
-                self.comment(f"Eine {name} hat dich verletzt ({dmg} Schaden) und ist geflohen.")
+                self.log(f"Erwischt! {name} trifft {h.name}: {dmg} Schaden. Das Biest flieht.")
+                self.comment(f"Der Gegner {name} hat dich verletzt ({dmg} Schaden) und ist geflohen.")
                 self.outcome(-0.8)
                 self.courage(-0.1)
                 self.damage(dmg, f"von {name} getötet")
@@ -733,7 +734,7 @@ class Game:
             score = self.rnd.uniform(0, 0.6)
             if "Wasser" in hint:
                 score += 1.5 * thirst_need
-            if "modrig" in hint:
+            if "Gemüse" in hint:
                 score += 0.8 * hunger_need
             if "glitzert" in hint:
                 score += 0.4 + 0.6 * max(thirst_need, hunger_need)

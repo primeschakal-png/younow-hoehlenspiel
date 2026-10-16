@@ -144,6 +144,7 @@ def make_app():
     app.router.add_get("/", index)
     app.router.add_get("/ws", ws_handler)
     app.router.add_static("/static/", OVERLAY)
+    app.router.add_static("/assets/", ROOT / "assets")
     app.on_startup.append(on_startup)
     app.on_cleanup.append(on_cleanup)
     return app
