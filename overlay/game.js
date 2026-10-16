@@ -35,7 +35,38 @@ const ROOFS = {
 };
 // Fenster: [obere Hälfte, untere Hälfte], liegen transparent auf der Fassade
 const WINDOWS = [[155, 163], [154, 162], [153, 161], [171, 179], [174, 182], [175, 183], [170, 178]];
+WINDOWS.push([153, 160]);   // großes Fenster mit Ladenschild
 const DOORWAY = 326;   // dunkle Kachel als offener Hauseingang
+const WOOD_FACADE = { upper: [298, 299], lower: [306, 307] };   // Holzhaus
+const IVY = [[300, 301], [308, 309]];                           // Kletterranke 2x2
+const LEAVES = [263, 269, 271, 278, 279, 302, 310];
+const GRASS = [0, 282, 283, 290, 291];
+const FLOWERS = [292, 293];
+const BEDS = [337, 339, 331];
+const HEDGE = 223;
+const FENCE = { top: [314, 315], bottom: [322, 323] };
+
+// Plätze: Inhalt der freien 4x4-Mitte, Raster [zeile][spalte], null = frei
+const PLAZA_LAYOUTS = {
+  markt: [
+    [null, null, 77, 12],
+    [5, 6, null, 7],
+    [13, 14, 343, 15],
+    [79, 78, 351, null],
+  ],
+  park: [
+    [19, null, 17, 18],
+    [27, null, 25, 26],
+    [null, 120, 121, 16],
+    [null, 128, 129, 24],
+  ],
+  statuen: [
+    [null, 98, 97, null],
+    [null, 106, 105, null],
+    [21, 114, 113, 21],
+    [29, null, null, 29],
+  ],
+};
 
 // Gegenstände: Bildnummern von oben nach unten (eine Spalte)
 const ENTITY_FRAMES = {
@@ -296,6 +327,15 @@ class CaveScene extends Phaser.Scene {
         if (y !== y0) { x++; continue; }
         let x1 = x;
         while (x1 + 1 < s.tw && role[y][x1 + 1] && role[y][x1 + 1].key === r.key) x1++;
+        const runLen = Number(r.key.split(":")[1]) - y0 + 1;
+        const gardenChance = runLen >= 8 ? 0.55 : 0.1;
+        if (x1 - x + 1 >= 2 && hash(x * 5 + 3, y0 * 11 + 7) < gardenChance) {
+          const y1g = Number(r.key.split(":")[1]);
+          const garden = { garden: true, x0: x, x1, y0, y1: y1g, fence: isFloor(x, y1g + 1) };
+          for (let gx = x; gx <= x1; gx++) for (let yy = y0; yy <= y1g; yy++) houseOf[yy][gx] = { house: garden, col: gx - x };
+          x = x1 + 1;
+          continue;
+        }
         let rem = x1 - x + 1, hx = x;
         while (rem > 0) {
           const w = rem === 4 ? 4 : rem === 2 ? 2 : rem === 1 ? 1 : 3;
@@ -305,6 +345,8 @@ class CaveScene extends Phaser.Scene {
             roof: theme.roofs[Math.floor(hash(hx, y0 + 99) * theme.roofs.length)],
             windows: [],
             door: -1,
+            wood: hash(hx + 17, y0) < 0.1,
+            ivy: w >= 2 && hash(hx + 9, y0 + 4) < (ti === 1 ? 0.35 : 0.08) ? Math.floor(hash(hx, y0 + 8) * (w - 1)) : -1,
           };
           // Fenster und Tür für die Mittelspalten
           for (let c = 0; c < w; c++) {
@@ -324,6 +366,14 @@ class CaveScene extends Phaser.Scene {
     }
 
     const colRole = (h, c) => (h.w === 1 ? 1 : c === 0 ? 0 : c === h.w - 1 ? 2 : 1);
+    const PLAZA_TYPES = ["brunnen", "markt", "park", "statuen"];
+    const plazaType = (px, py) => PLAZA_TYPES[Math.floor(hash(px * 13, py * 17) * PLAZA_TYPES.length)];
+    const grassTiles = new Set();
+    for (const [px, py, pw, ph] of s.plazas || []) {
+      if (plazaType(px, py) === "park") {
+        for (let yy = py; yy < py + ph; yy++) for (let xx = px; xx < px + pw; xx++) grassTiles.add(xx + "," + yy);
+      }
+    }
     const LMR = ["l", "m", "r"];
 
     for (let y = 0; y < s.th; y++) {
@@ -341,7 +391,8 @@ class CaveScene extends Phaser.Scene {
         if (!hasCity) {
           img = this.add.image(x * TILE, y * TILE, isFloor(x, y) ? "floor" + ((x * 7 + y * 13) % 2) : "wall0");
         } else if (isFloor(x, y)) {
-          img = this.add.image(x * TILE, y * TILE, "city", theme.floor(x, y));
+          img = this.add.image(x * TILE, y * TILE, "city", grassTiles.has(x + "," + y) ? GRASS[Math.floor(hash(x, y) * GRASS.length)] : theme.floor(x, y));
+          if (hash(x + 31, y + 17) < (ti === 1 ? 0.1 : 0.02)) add(LEAVES[Math.floor(hash(y, x + 3) * LEAVES.length)]);
           if (!isFloor(x, y - 1)) {
             const shade = this.add.image(x * TILE, y * TILE, "wallshade").setOrigin(0).setVisible(false);
             extras.push(shade);
@@ -350,10 +401,12 @@ class CaveScene extends Phaser.Scene {
         } else {
           const r = role[y][x];
           const ho = houseOf[y][x];
-          const h = ho ? ho.house : { w: 1, roof: "brown", windows: [null], door: -1 };
+          const h = ho ? ho.house : { w: 1, roof: "brown", windows: [null], door: -1, ivy: -1 };
           const c = ho ? ho.col : 0;
           const cr = colRole(h, c);
-          if (r.kind === "roof") {
+          if (h.garden) {
+            img = this.add.image(x * TILE, y * TILE, "city", this.gardenTile(h, x, y, add));
+          } else if (r.kind === "roof") {
             const set = ROOFS[h.roof];
             let frame = set[r.row][cr];
             if (r.row === "mid" && cr === 1 && hash(x, y + 3) < 0.3) frame = set.midAlt[Math.floor(hash(y, x) * 3)];
@@ -366,7 +419,9 @@ class CaveScene extends Phaser.Scene {
             }
           } else {
             const f = theme.facade[r.row];
-            img = this.add.image(x * TILE, y * TILE, "city", f[LMR[cr]]);
+            const base = h.wood ? WOOD_FACADE[r.row][x % 2] : f[LMR[cr]];
+            img = this.add.image(x * TILE, y * TILE, "city", base);
+            if (h.ivy >= 0 && (c === h.ivy || c === h.ivy + 1)) add(IVY[r.row === "upper" ? 0 : 1][c - h.ivy]);
             const win = h.windows[c];
             if (r.row === "lower" && h.door === c) {
               add(DOORWAY);
@@ -384,9 +439,18 @@ class CaveScene extends Phaser.Scene {
     }
     overlays.forEach((o) => this.layer.add(o));   // Fenster, Schatten und Giebelecken über den Grundkacheln
 
-    // Plätze: Brunnen in der Mitte, Pflanzen in den Ecken
+    // Plätze: Brunnen, Markt, Park oder Statuen
     for (const [px, py, pw, ph] of s.plazas || []) {
       if (!hasCity) break;
+      const type = plazaType(px, py);
+      if (type !== "brunnen") {
+        PLAZA_LAYOUTS[type].forEach((row, ry) => row.forEach((f, rx) => {
+          if (f === null) return;
+          const d = this.add.image((px + rx) * TILE, (py + ry) * TILE, "city", f).setOrigin(0).setDepth(2).setVisible(false);
+          this.decor.push({ img: d, x: px + rx, y: py + ry });
+        }));
+        continue;
+      }
       const fx = px + pw / 2 - 1, fy = py + ph / 2 - 1;
       SPRING_FRAMES.forEach((r, ry) => r.forEach((f, rx) => {
         const d = this.add.image((fx + rx) * TILE, (fy + ry) * TILE, "city", f).setOrigin(0).setDepth(2).setVisible(false);
@@ -426,6 +490,24 @@ class CaveScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.figure, true, 0.12, 0.12);
     this.cameras.main.setZoom(ZOOM);
     this.cameras.main.setFollowOffset(0, -90 / ZOOM);
+  }
+
+  // Garten: Hecke am Rand, Zaun zur Gasse hin, innen Gras mit Beeten, Blumen, Kürbissen und kleinen Bäumen
+  gardenTile(gd, x, y, add) {
+    const atBottom = gd.fence && y >= gd.y1 - 1;
+    if (atBottom) {
+      add(y === gd.y1 ? FENCE.bottom[x % 2] : FENCE.top[x % 2]);
+      return GRASS[Math.floor(hash(x, y) * GRASS.length)];
+    }
+    const wide = gd.x1 - gd.x0 >= 2;
+    if (y === gd.y0 || (wide && (x === gd.x0 || x === gd.x1))) return HEDGE;
+    const r = hash(x * 7 + 1, y * 3 + 2);
+    if (y === gd.y0 + 1 && gd.y1 - gd.y0 >= 5) return BEDS[Math.floor(hash(x, y) * BEDS.length)];
+    if (r < 0.08) add(262);
+    else if (r < 0.12) add(270);
+    else if (r < 0.2) add([2, 3, 10, 11][Math.floor(hash(y, x) * 4)]);
+    if (r > 0.9) return FLOWERS[x % 2];
+    return GRASS[Math.floor(hash(x, y) * GRASS.length)];
   }
 
   addEntity(e) {
