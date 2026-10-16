@@ -1287,6 +1287,11 @@ function renderCharacter(c) {
 
 // ---------------- Nachrichten ----------------
 
+// Chat-Kasten: im Test immer, sonst nur wenn in den Einstellungen eingeschaltet
+function setChatVisible(show) {
+  el("chat-lines").classList.toggle("hidden", !(show || TESTCHAT));
+}
+
 function handle(msg) {
   if (!scene && msg.type !== "chat" && msg.type !== "log") {
     pending.push(msg);
@@ -1297,6 +1302,7 @@ function handle(msg) {
       if (lastDepth !== null && msg.depth > lastDepth) audio.play("stairs");
       lastDepth = msg.depth;
       audio.configure(msg.audio);
+      setChatVisible(msg.chat_overlay);
       audio.playMusic(msg.area && msg.area.key !== "stadt" ? MUSIC.unter : MUSIC.stadt);
       el("depth").textContent = "Ebene " + msg.depth + (msg.area ? " · " + msg.area.name : "");
       renderStats(msg.hero);
@@ -1327,6 +1333,9 @@ function handle(msg) {
     case "gift":
       audio.play("coins");
       audio.play("coins", 300);
+      break;
+    case "chat_overlay":
+      setChatVisible(msg.show);
       break;
     case "audio":
       audio.configure(msg);

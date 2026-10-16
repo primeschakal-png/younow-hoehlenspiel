@@ -175,6 +175,7 @@ async def settings_post(request):
     apply_all(request.app, values)
     restart = [k for k, f in settings.FIELD.items() if not f[5] and values.get(k) != before.get(k)]
     game.emit({"type": "audio", **game.audio})
+    game.emit({"type": "chat_overlay", "show": game.chat_overlay})
     if game.step_seconds != old_step:
         game.emit({"type": "step", "step": game.step_seconds})
     await broadcast(game.flush())

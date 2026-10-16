@@ -363,6 +363,7 @@ class Game:
             "entities": self.visible_entities(),
             "camp": self._camp_info(),
             "audio": self.audio,
+            "chat_overlay": getattr(self, "chat_overlay", False),
             "dead": self.state == "dead",
             "hall": self.hall[-5:],
             "character": self.character.info(),

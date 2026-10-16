@@ -61,6 +61,8 @@ FIELDS = [
     ("YOUNOW_ENABLED", "younow", "bool", "YouNow-Chat lesen",
      "Fragt die öffentliche Stream-Info ab: Chat, Befehle und Geschenke kommen direkt ins Spiel, ohne Browser.", True),
     ("YOUNOW_USER", "younow", "text", "YouNow-Name des Streams", "Der Benutzername, unter dem gestreamt wird.", True),
+    ("CHAT_OVERLAY", "younow", "bool", "Chat im Bild anzeigen",
+     "YouNow zeigt den Chat selbst. Mit ?testchat=1 ist der Kasten immer sichtbar.", True),
     ("YOUNOW_POLL_SECONDS", "younow", "float", "Abfrage alle (Sekunden)", "Kleiner heißt schnellere Reaktion, 3 ist ein guter Wert.", True),
     ("BRIBE_LIKES_PER_VOTE", "younow", "int", "Likes pro Zusatzstimme",
      "Geschenkwert in Likes, der eine zusätzliche Stimme ergibt. Ein Geschenk für 2.500 Likes ist bei 1000 also 2,5 Stimmen wert.", True),
@@ -183,6 +185,7 @@ def apply(values, game, llm):
                 v = num(values, key, game_mod.BAL[name])
                 game_mod.BAL[name] = int(v) if key in FIELD and FIELD[key][2] == "int" else v
     game.likes_per_vote = max(1, int(num(values, "BRIBE_LIKES_PER_VOTE", 1000)))
+    game.chat_overlay = values.get("CHAT_OVERLAY", "0") == "1"
     game.audio = {
         "enabled": values.get("SOUND_ENABLED", "1") == "1",
         "music": max(0.0, min(1.0, num(values, "MUSIC_VOLUME", 35) / 100)),
