@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Höhlenspiel: YouNow-Mitschnitt
 // @namespace    younow-hoehlenspiel
-// @version      0.1
+// @version      0.2
 // @description  Schneidet die Live-Nachrichten von YouNow mit (WebSocket und PubNub) und schickt sie an den Spielserver. Nur zum Herausfinden des Formats von Chat, Likes und Geschenken.
 // @match        https://www.younow.com/*
 // @run-at       document-start
@@ -17,7 +17,9 @@
 
   const SERVER = "http://127.0.0.1:8000/api/younow/raw";
   const MAX_TEXT = 20000;            // längere Nachrichten werden gekürzt
-  const URL_FILTER = /pubnub|pndsn|subscribe|chat|gift|like|socket|broadcast/i;
+  // alle Anfragen an YouNow und die Dienste dahinter, die JSON zurückgeben (Geschenkliste, Chatverlauf, Likes ...)
+  const URL_FILTER = /younow|propsproject|agora|easemob|pubnub|pndsn/i;
+  const isJson = (type, txt) => /json/i.test(type || "") || /^\s*[\[{]/.test(txt || "");
 
   const w = unsafeWindow;
   let queue = [];
@@ -91,8 +93,11 @@
       const url = typeof input === "string" ? input : (input && input.url) || "";
       const p = nativeFetch.apply(this, arguments);
       if (URL_FILTER.test(url)) {
-        p.then((resp) => resp.clone().text().then((txt) => push("fetch", url, txt.slice(0, MAX_TEXT))))
-          .catch(() => {});
+        p.then((resp) => {
+          const type = resp.headers.get("content-type");
+          if (/image|video|audio|font|css|javascript/i.test(type || "")) return;
+          resp.clone().text().then((txt) => { if (isJson(type, txt)) push("fetch", url, txt.slice(0, MAX_TEXT)); });
+        }).catch(() => {});
       }
       return p;
     };
@@ -110,8 +115,9 @@
       if (URL_FILTER.test(url)) {
         this.addEventListener("load", () => {
           try {
+            const type = this.getResponseHeader("content-type");
             const txt = typeof this.response === "string" ? this.response : this.responseText;
-            push("xhr", url, String(txt || "").slice(0, MAX_TEXT));
+            if (isJson(type, txt)) push("xhr", url, String(txt || "").slice(0, MAX_TEXT));
           } catch (e) { /* Antwort nicht lesbar */ }
         });
       }
