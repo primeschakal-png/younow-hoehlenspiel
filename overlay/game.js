@@ -128,6 +128,8 @@ class CaveScene extends Phaser.Scene {
     this.entities = new Map();   // id -> { img, x, y }
     this.campfire = null;
     this.actText = null;
+    this.sayText = null;
+    this.sayTimer = null;
   }
 
   create() {
@@ -140,6 +142,15 @@ class CaveScene extends Phaser.Scene {
       padding: { x: 6, y: 3 },
     }).setOrigin(0.5, 1).setDepth(20).setVisible(false);
     this.campfire = this.add.image(0, 0, "campfire").setDepth(9).setVisible(false);
+    this.sayText = this.add.text(0, 0, "", {
+      fontFamily: "Trebuchet MS, Verdana, sans-serif",
+      fontSize: "17px",
+      color: "#1a1620",
+      backgroundColor: "#f3e7c8",
+      padding: { x: 9, y: 6 },
+      wordWrap: { width: 340 },
+      align: "center",
+    }).setOrigin(0.5, 1).setDepth(21).setVisible(false);
     scene = this;
     const queued = pending;
     pending = [];
@@ -190,9 +201,12 @@ class CaveScene extends Phaser.Scene {
 
     this.step = s.step || 0.25;
     this.reveal(s.revealed, true);
-    this.cameras.main.setBounds(0, 0, s.tw * TILE, s.th * TILE);
+    // keine Kamera-Grenzen: die Figur bleibt immer im oberen Bildteil,
+    // damit Abstimmung und Chat unten sie nie verdecken
+    this.cameras.main.removeBounds();
     this.moveFigure(s.pos, s.facing, true);
     this.cameras.main.startFollow(this.figure, true, 0.12, 0.12);
+    this.cameras.main.setFollowOffset(0, -90);
   }
 
   addEntity(e) {
@@ -240,9 +254,30 @@ class CaveScene extends Phaser.Scene {
     }
   }
 
+  say(text, to) {
+    if (!text) return;
+    this.sayText.setText((to ? "@" + to + " " : "") + text).setVisible(true).setAlpha(1);
+    if (this.sayTimer) this.sayTimer.remove();
+    const ms = Math.max(4500, Math.min(11000, text.length * 75));
+    this.sayTimer = this.time.delayedCall(ms, () => {
+      this.tweens.add({ targets: this.sayText, alpha: 0, duration: 400, onComplete: () => this.sayText.setVisible(false) });
+    });
+  }
+
   update() {
-    if (this.figure && this.actText.visible) {
-      this.actText.setPosition(this.figure.x, this.figure.y - 20);
+    if (!this.figure) return;
+    let top = this.figure.y - 20;
+    if (this.actText.visible) {
+      this.actText.setPosition(this.figure.x, top);
+      top -= this.actText.height + 6;
+    }
+    if (this.sayText.visible) {
+      // im sichtbaren Bereich halten
+      const cam = this.cameras.main;
+      const half = this.sayText.width / 2;
+      const x = Math.max(cam.scrollX + half + 8, Math.min(cam.scrollX + cam.width - half - 8, this.figure.x));
+      const y = Math.max(cam.scrollY + this.sayText.height + 8, top);
+      this.sayText.setPosition(x, y);
     }
   }
 
@@ -455,6 +490,9 @@ function handle(msg) {
       break;
     case "camp":
       scene.setCamp(msg);
+      break;
+    case "say":
+      scene.say(msg.text, msg.to);
       break;
     case "death":
       showDeath(msg);

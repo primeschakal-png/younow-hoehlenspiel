@@ -39,6 +39,13 @@ TRAITS = {
     "neugierig": (0.1, 0.05),
 }
 
+# Eigenschaften, die nicht zusammen vorkommen sollen
+CONFLICTS = [
+    {"mutig", "vorsichtig"}, {"mutig", "ängstlich"}, {"tollkühn", "vorsichtig"},
+    {"tollkühn", "ängstlich"}, {"mutig", "tollkühn"}, {"vorsichtig", "ängstlich"},
+    {"gesellig", "eigenbrötlerisch"}, {"gesellig", "misstrauisch"}, {"eitel", "eigenbrötlerisch"},
+]
+
 SPEECH = ["knurrig und wortkarg", "geschwätzig", "poetisch und etwas schwülstig",
           "trocken und sarkastisch", "freundlich und naiv", "derb und laut"]
 
@@ -71,7 +78,10 @@ class Character:
         self.name = name
         self.origin = rnd.choice(ORIGINS)
         self.klass = rnd.choice(CLASSES)
-        self.traits = rnd.sample(list(TRAITS), 2)
+        while True:
+            self.traits = rnd.sample(list(TRAITS), 2)
+            if set(self.traits) not in CONFLICTS:
+                break
         self.speech = rnd.choice(SPEECH)
         bc = sum(TRAITS[t][0] for t in self.traits) + rnd.uniform(-0.1, 0.1)
         ba = sum(TRAITS[t][1] for t in self.traits) + rnd.uniform(-0.1, 0.1)

@@ -15,6 +15,7 @@ from aiohttp import WSMsgType, web
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game import Game  # noqa: E402
+from llm import LLMClient  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OVERLAY = ROOT / "overlay"
@@ -33,13 +34,18 @@ def load_env(path):
     return env
 
 
-ENV = load_env(ROOT / ".env") or load_env(ROOT / ".env.example")
+ENV = {**load_env(ROOT / ".env.example"), **load_env(ROOT / ".env")}
 HOST = ENV.get("HOST", "127.0.0.1")
 PORT = int(ENV.get("PORT", "8000"))
 VOTE_SECONDS = float(ENV.get("VOTE_SECONDS", "28"))
 STEP_SECONDS = float(ENV.get("STEP_SECONDS", "0.25"))
 IDLE_MINUTES = float(ENV.get("IDLE_MINUTES", "5"))
 IDLE_VOTE_SECONDS = float(ENV.get("IDLE_VOTE_SECONDS", "10"))
+LLM_ENABLED = ENV.get("LLM_ENABLED", "1") == "1"
+LLM_BASE_URL = ENV.get("LLM_BASE_URL", "http://127.0.0.1:8080/v1")
+LLM_MODEL = ENV.get("LLM_MODEL", "local")
+LLM_API_KEY = ENV.get("LLM_API_KEY", "")
+LLM_TIMEOUT = float(ENV.get("LLM_TIMEOUT", "25"))
 
 clients = set()
 
@@ -95,12 +101,33 @@ async def game_loop(app):
         await asyncio.sleep(STEP_SECONDS)
 
 
+async def llm_worker(app):
+    game = app["game"]
+    client = app["llm"]
+    while True:
+        req = game.next_llm_request()
+        if req is None:
+            await asyncio.sleep(0.2)
+            continue
+        try:
+            data = await client.ask(req["messages"])
+            game.on_llm_result(req, data)
+            await broadcast(game.flush())
+        except Exception as exc:  # Worker darf nie sterben
+            print("Fehler im LLM-Worker:", repr(exc))
+            await asyncio.sleep(1)
+
+
 async def on_startup(app):
+    await app["llm"].start()
     app["loop_task"] = asyncio.create_task(game_loop(app))
+    app["llm_task"] = asyncio.create_task(llm_worker(app))
 
 
 async def on_cleanup(app):
     app["loop_task"].cancel()
+    app["llm_task"].cancel()
+    await app["llm"].close()
     for ws in list(clients):
         await ws.close()
 
@@ -113,6 +140,7 @@ def make_app():
         idle_minutes=IDLE_MINUTES,
         idle_vote_seconds=IDLE_VOTE_SECONDS,
     )
+    app["llm"] = LLMClient(LLM_BASE_URL, LLM_MODEL, LLM_API_KEY, LLM_TIMEOUT, LLM_ENABLED)
     app.router.add_get("/", index)
     app.router.add_get("/ws", ws_handler)
     app.router.add_static("/static/", OVERLAY)
@@ -123,4 +151,5 @@ def make_app():
 
 if __name__ == "__main__":
     print(f"Höhlenspiel läuft auf http://{HOST}:{PORT}/  (Test-Chat: http://{HOST}:{PORT}/?testchat=1)")
+    print(f"LLM: {'an, ' + LLM_BASE_URL if LLM_ENABLED else 'aus'}")
     web.run_app(make_app(), host=HOST, port=PORT, print=None)

@@ -39,11 +39,11 @@ Erste lauffähige Version ohne LLM und ohne YouNow.
 
 ## 5. LLM-Anbindung
 
-- [ ] OpenAI-kompatible Schnittstelle, lokal llama-server, später API
-- [ ] Persona und Lage als Sätze an das LLM
-- [ ] Entscheidung bei fehlenden Stimmen, Anfrage schon während des Timers
-- [ ] Kommentare, Sprechblasen, Tagebuch im Lager
-- [ ] Zufall als Notfall bei Ausfall des LLM
+- [x] OpenAI-kompatible Schnittstelle, lokal llama-server, später API
+- [x] Persona und Lage als Sätze an das LLM
+- [x] Entscheidung bei fehlenden Stimmen, Anfrage schon während des Timers
+- [x] Kommentare, Sprechblasen, Tagebuch im Lager
+- [x] Zufall als Notfall bei Ausfall des LLM
 
 ## 6. YouNow-Anbindung
 

@@ -10,6 +10,10 @@ Die vollständige Beschreibung steht im [Pflichtenheft](docs/pflichtenheft.md), 
 2. `start.bat` doppelklicken. Beim ersten Start wird `.env` aus `.env.example` erzeugt, eine Python-Umgebung eingerichtet und `aiohttp` installiert.
 3. Der Browser öffnet `http://localhost:8000/?testchat=1`. Unten rechts ist der Test-Chat, dort `!links`, `!rechts`, `!geradeaus` oder `!zurueck` eintippen, sobald an einer Kreuzung abgestimmt wird. Mit verschiedenen Namen im kleinen Feld lassen sich mehrere Zuschauer simulieren.
 
+Die Figur spricht über den lokalen llama-server (Pfade und Parameter in `.env`, Vorgaben in `.env.example`). `start.bat` startet ihn mit, läuft schon einer auf dem Port, wird er mitgenutzt. Ohne LLM (`LLM_ENABLED=0`) entscheidet die Figur nach eigenem Gespür und bleibt stumm.
+
+Zuschauer können die Figur mit `!sag <Text>` ansprechen (pro Zuschauer höchstens alle 30 Sekunden).
+
 Für OBS: Browserquelle mit `http://localhost:8000/`, Größe 1280 x 720 (ohne Test-Chat).
 
 ## Aufbau
