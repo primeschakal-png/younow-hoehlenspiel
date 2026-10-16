@@ -16,11 +16,8 @@ const THEMES = [
   {   // ungerade Ebenen: Sandstein und Kopfsteinpflaster mit Rand
     // Kachelnummern laut assets/tiles/magecity.json
     floor: (n, e, s, w, x, y) => {
-      if (!(n && s) && !(e && w) && (n || s || e || w)) {
-        return F(n ? 9 : s ? 11 : 10, w ? 0 : e ? 2 : 1);   // Randsteine nur, wo eine Seite offen bleibt
-      }
       const r = hash(x, y);
-      return r < 0.2 ? 75 : r < 0.35 ? 76 : 81;             // drei nahtlose Innenflächen
+      return r < 0.2 ? 75 : r < 0.35 ? 76 : 81;             // drei nahtlose Innenflächen, keine Randsteine
     },
     face: () => 41,               // Sandsteinmauer unten Mitte, ohne Pfeiler
     topFrame: () => 33,           // Sandsteinmauer oben Mitte, als Krone abgedunkelt
@@ -112,6 +109,14 @@ function makeTextures(sc) {
       g.generateTexture("rim" + ti + "_" + m, TILE, TILE);
     }
   });
+
+  // Schatten auf dem Boden direkt unter einer Mauer, überall gleich
+  g.clear();
+  for (let i = 0; i < 8; i++) {
+    g.fillStyle(0x000000, 0.32 * (1 - i / 8));
+    g.fillRect(0, i, TILE, 1);
+  }
+  g.generateTexture("wallshade", TILE, TILE);
 
   // Platzhalter-Wände (falls die Kacheldatei fehlt)
   for (let m = 0; m < 16; m++) {
@@ -267,6 +272,11 @@ class CaveScene extends Phaser.Scene {
         if (isFloor(x, y)) {
           if (hasCity) {
             img = this.add.image(x * TILE, y * TILE, "city", theme.floor(n, e, so, w, x, y));
+            if (n) {
+              const shade = this.add.image(x * TILE, y * TILE, "wallshade").setOrigin(0).setVisible(false);
+              rims.push(shade);
+              img.rim = shade;
+            }
             // Deko nur auf Platzkacheln (gerade Koordinaten liegen nie auf dem Weg der Figur)
             if (x % 2 === 0 && y % 2 === 0 && hash(y, x) < 0.55) {
               const d = this.add.image(x * TILE, y * TILE, "city", DECOR[Math.floor(hash(x + 7, y) * DECOR.length)])
