@@ -104,11 +104,13 @@ CAMP_ACTIVITIES = [
 
 class Game:
     def __init__(self, vote_seconds=28, step_seconds=0.25, idle_minutes=5.0, idle_vote_seconds=10,
-                 cells_w=16, cells_h=10, reveal_radius=4):
+                 cells_w=16, cells_h=10, reveal_radius=4, camp_max_minutes=8.0, camp_pause_minutes=10.0):
         self.vote_seconds = vote_seconds
         self.idle_vote_seconds = idle_vote_seconds
         self.step_seconds = step_seconds
         self.idle_seconds = idle_minutes * 60
+        self.camp_max_seconds = camp_max_minutes * 60
+        self.camp_pause_seconds = camp_pause_minutes * 60
         self.cells_w = cells_w
         self.cells_h = cells_h
         self.reveal_radius = reveal_radius
@@ -220,6 +222,13 @@ class Game:
                 "wenn_chat_anders": clean_text(data.get("wenn_chat_anders")),
             }
             self.say(clean_text(data.get("kommentar")))
+            # Niemand da und die Figur weiß schon, wohin: nach kurzer Pause los
+            if self.idle() and not self.vote["votes"] and self.vote["llm"]["wahl"]:
+                ends = min(self.vote["ends"], time.monotonic() + 3)
+                if ends < self.vote["ends"]:
+                    self.vote["ends"] = ends
+                    self.emit({"type": "vote_update", "counts": self._counts(),
+                               "remaining": round(ends - time.monotonic(), 1)})
             return
         self.say(clean_text(data.get("satz")), req["meta"].get("user"))
 
@@ -260,7 +269,7 @@ class Game:
         self.camp = None
         self.state = "walking"
         self.resume_at = 0.0
-        self.camp_left_at = 0.0
+        self.camp_left_at = -1e9
         self.last_decision = None
         self.llm_queue = []
         self.revealed = set()
@@ -381,6 +390,19 @@ class Game:
 
     def idle(self):
         return time.monotonic() - self.last_chat > self.idle_seconds
+
+    def vote_duration(self):
+        """Volle Zeit, solange der Chat in der letzten Minute aktiv war. Danach wird die Zeit
+        gleichmäßig kürzer, bis sie nach IDLE_MINUTES ohne Chat bei IDLE_VOTE_SECONDS ankommt."""
+        silence = time.monotonic() - self.last_chat
+        full, short = self.vote_seconds, min(self.idle_vote_seconds, self.vote_seconds)
+        start = min(60.0, self.idle_seconds)
+        if silence <= start:
+            return full
+        if silence >= self.idle_seconds:
+            return short
+        f = (silence - start) / max(1.0, self.idle_seconds - start)
+        return round(full + (short - full) * f)
 
     def pause(self, seconds):
         self.state = "event"
@@ -668,7 +690,7 @@ class Game:
 
     def _can_camp(self):
         h = self.hero
-        if self.time_since_camp() < 60:
+        if self.time_since_camp() < self.camp_pause_seconds:
             return False
         thirsty = h.thirst < 70 and h.water == 0
         hungry = h.hunger < 60 and h.food == 0
@@ -683,7 +705,8 @@ class Game:
 
     def _start_camp(self):
         self.state = "camp"
-        self.camp = {"text": "macht ein Feuer", "next": time.monotonic() + 8, "ticks": 0}
+        self.camp = {"text": "macht ein Feuer", "next": time.monotonic() + 8, "ticks": 0,
+                     "since": time.monotonic()}
         self.log(f"Niemand da. {self.hero.name} schlägt ein Lager auf.")
         self.emit({"type": "camp", **self._camp_info()})
 
@@ -707,6 +730,12 @@ class Game:
 
         if (h.thirst < 60 and h.water == 0) or (h.hunger < 50 and h.food == 0):
             self._leave_camp(f"{h.name} packt zusammen. Die Vorräte gehen aus, es muss weitergehen.")
+            return
+
+        if now - self.camp["since"] >= self.camp_max_seconds:
+            self._leave_camp(f"{h.name} hat genug gerastet und zieht weiter.")
+            self.comment("Du hast lange genug allein am Feuer gesessen und ziehst weiter, "
+                         "vielleicht schaut ja bald jemand zu.")
             return
 
         if now < self.camp["next"]:
@@ -760,7 +789,7 @@ class Game:
             hints[label] = ent_mod.hint_text(kinds, self.rnd)
             if self.underground():
                 hints[label] = hints[label].replace("nach Gemüse", "nach Pilzen")
-        seconds = self.idle_vote_seconds if self.idle() else self.vote_seconds
+        seconds = self.vote_duration()
         self.vote = {
             "id": next(self.vote_ids),
             "llm": None,

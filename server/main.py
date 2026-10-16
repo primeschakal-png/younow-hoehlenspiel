@@ -4,11 +4,13 @@ und lässt die Spielschleife laufen.
 Start: python server/main.py   (oder start.bat)
 Overlay: http://localhost:8000/            (für OBS)
 Test:    http://localhost:8000/?testchat=1 (mit Eingabefeld)
+Einstellungen: http://localhost:8000/einstellungen
 """
 
 import asyncio
 import json
 import sys
+import time
 from pathlib import Path
 
 from aiohttp import WSMsgType, web
@@ -16,36 +18,15 @@ from aiohttp import WSMsgType, web
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game import Game  # noqa: E402
 from llm import LLMClient  # noqa: E402
+import settings  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OVERLAY = ROOT / "overlay"
 
 
-def load_env(path):
-    env = {}
-    if not path.exists():
-        return env
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        env[key.strip()] = value.strip()
-    return env
-
-
-ENV = {**load_env(ROOT / ".env.example"), **load_env(ROOT / ".env")}
-HOST = ENV.get("HOST", "127.0.0.1")
-PORT = int(ENV.get("PORT", "8000"))
-VOTE_SECONDS = float(ENV.get("VOTE_SECONDS", "28"))
-STEP_SECONDS = float(ENV.get("STEP_SECONDS", "0.25"))
-IDLE_MINUTES = float(ENV.get("IDLE_MINUTES", "5"))
-IDLE_VOTE_SECONDS = float(ENV.get("IDLE_VOTE_SECONDS", "10"))
-LLM_ENABLED = ENV.get("LLM_ENABLED", "1") == "1"
-LLM_BASE_URL = ENV.get("LLM_BASE_URL", "http://127.0.0.1:8080/v1")
-LLM_MODEL = ENV.get("LLM_MODEL", "local")
-LLM_API_KEY = ENV.get("LLM_API_KEY", "")
-LLM_TIMEOUT = float(ENV.get("LLM_TIMEOUT", "25"))
+VALUES = settings.current()
+HOST = VALUES.get("HOST", "127.0.0.1")
+PORT = int(VALUES.get("PORT", "8000"))
 
 clients = set()
 
@@ -98,7 +79,7 @@ async def game_loop(app):
             await broadcast(game.flush())
         except Exception as exc:  # Spielschleife darf nie sterben
             print("Fehler in der Spielschleife:", repr(exc))
-        await asyncio.sleep(STEP_SECONDS)
+        await asyncio.sleep(game.step_seconds)
 
 
 async def llm_worker(app):
@@ -132,16 +113,82 @@ async def on_cleanup(app):
         await ws.close()
 
 
+# ---------- Einstellungsseite ----------
+
+def local_only(request):
+    """Einstellungen nur vom eigenen PC aus, auch wenn HOST=0.0.0.0 gesetzt ist."""
+    if request.remote not in ("127.0.0.1", "::1", "localhost"):
+        raise web.HTTPForbidden(text="Einstellungen nur auf diesem PC.")
+
+
+async def settings_page(request):
+    local_only(request)
+    return web.FileResponse(OVERLAY / "einstellungen.html")
+
+
+async def settings_get(request):
+    local_only(request)
+    return web.json_response({"groups": settings.describe(settings.current())})
+
+
+async def settings_post(request):
+    local_only(request)
+    data = await request.json()
+    before = settings.current()
+    values, errors = settings.save(data.get("values", {}))
+    if errors:
+        return web.json_response({"ok": False, "errors": errors}, status=400)
+    game = request.app["game"]
+    old_step = game.step_seconds
+    settings.apply(values, game, request.app["llm"])
+    restart = [k for k, f in settings.FIELD.items() if not f[5] and values.get(k) != before.get(k)]
+    if game.step_seconds != old_step:
+        game.emit({"type": "step", "step": game.step_seconds})
+    await broadcast(game.flush())
+    return web.json_response({"ok": True, "restart": restart, "groups": settings.describe(values)})
+
+
+async def settings_action(request):
+    local_only(request)
+    data = await request.json()
+    game = request.app["game"]
+    action = data.get("action")
+    if action == "new_level":
+        game.new_level()
+    elif action == "new_hero":
+        game.new_hero()
+    elif action == "llm_test":
+        t0 = time.monotonic()
+        request.app["llm"].fail_until = 0.0   # Test immer wirklich senden
+        answer = await request.app["llm"].ask([
+            {"role": "system", "content": "Antworte ausschließlich mit einem JSON-Objekt."},
+            {"role": "user", "content": 'Sag kurz Hallo auf Deutsch. Antworte als JSON: {"satz": "..."}'},
+        ], max_tokens=60)
+        secs = round(time.monotonic() - t0, 1)
+        if answer is None:
+            return web.json_response({"ok": False, "text": f"Keine brauchbare Antwort nach {secs} s. "
+                                      "Läuft llama-server, stimmt die Adresse?"})
+        return web.json_response({"ok": True, "text": f"Antwort nach {secs} s: {answer.get('satz', answer)}"})
+    else:
+        return web.json_response({"ok": False, "text": "unbekannte Aktion"}, status=400)
+    await broadcast(game.flush())
+    return web.json_response({"ok": True})
+
+
 def make_app():
     app = web.Application()
-    app["game"] = Game(
-        vote_seconds=VOTE_SECONDS,
-        step_seconds=STEP_SECONDS,
-        idle_minutes=IDLE_MINUTES,
-        idle_vote_seconds=IDLE_VOTE_SECONDS,
-    )
-    app["llm"] = LLMClient(LLM_BASE_URL, LLM_MODEL, LLM_API_KEY, LLM_TIMEOUT, LLM_ENABLED)
+    app["game"] = Game()
+    app["llm"] = LLMClient("http://127.0.0.1:8080/v1", "local")
+    settings.apply(VALUES, app["game"], app["llm"])
+    # erste Karte neu, damit Kartengröße und Sichtweite aus den Einstellungen gelten
+    app["game"].depth = 0
+    app["game"].outbox.clear()
+    app["game"].new_level()
     app.router.add_get("/", index)
+    app.router.add_get("/einstellungen", settings_page)
+    app.router.add_get("/api/settings", settings_get)
+    app.router.add_post("/api/settings", settings_post)
+    app.router.add_post("/api/action", settings_action)
     app.router.add_get("/ws", ws_handler)
     app.router.add_static("/static/", OVERLAY)
     app.router.add_static("/assets/", ROOT / "assets")
@@ -152,5 +199,6 @@ def make_app():
 
 if __name__ == "__main__":
     print(f"Höhlenspiel läuft auf http://{HOST}:{PORT}/  (Test-Chat: http://{HOST}:{PORT}/?testchat=1)")
-    print(f"LLM: {'an, ' + LLM_BASE_URL if LLM_ENABLED else 'aus'}")
+    print(f"Einstellungen: http://127.0.0.1:{PORT}/einstellungen")
+    print(f"LLM: {'an, ' + VALUES.get('LLM_BASE_URL', '') if VALUES.get('LLM_ENABLED', '1') == '1' else 'aus'}")
     web.run_app(make_app(), host=HOST, port=PORT, print=None)

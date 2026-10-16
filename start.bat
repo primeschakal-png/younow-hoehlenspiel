@@ -7,9 +7,8 @@ title Hoehlenspiel - llama-server + Spielserver
 rem ================================================================
 rem  Einstellungen: erst .env.example als Vorgabe, dann .env
 rem ================================================================
-if not exist ".env" copy ".env.example" ".env" >nul
 for /f "usebackq eol=# tokens=1,* delims==" %%A in (".env.example") do set "%%A=%%B"
-for /f "usebackq eol=# tokens=1,* delims==" %%A in (".env") do set "%%A=%%B"
+if exist ".env" for /f "usebackq eol=# tokens=1,* delims==" %%A in (".env") do set "%%A=%%B"
 
 if not "%LLAMA_START%"=="1" goto skip_llm
 if not "%LLM_ENABLED%"=="1" goto skip_llm

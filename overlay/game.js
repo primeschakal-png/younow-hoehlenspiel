@@ -1125,6 +1125,9 @@ function handle(msg) {
     case "entity_remove":
       scene.removeEntity(msg.id);
       break;
+    case "step":
+      scene.step = msg.step;
+      break;
     case "trap":
       scene.showTrap(msg.x, msg.y);
       break;
@@ -1159,6 +1162,7 @@ function handle(msg) {
       break;
     case "vote_update":
       renderVote(currentOptions, msg.counts, null);
+      if (typeof msg.remaining === "number") voteEndsAt = Date.now() + msg.remaining * 1000;
       break;
     case "vote_end":
       endVote(msg.choice, msg.reason, msg.counts);

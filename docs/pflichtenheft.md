@@ -188,3 +188,13 @@ Mitte: Abenteurer. Je weiter außen, desto extremer die Ausprägung.
 6. YouNow-Anbindung
 7. Speicherstand, Ehrenhalle, Robustheit
 8. Optional: VPS-Betrieb
+
+## Einstellungsseite und Leerlauf
+
+Unter `/einstellungen` (nur vom eigenen PC) stehen alle wichtigen Werte mit Erklärung, Vorgabe und
+„zurücksetzen“. Sofort wirksam: Ablauf, Lager, Balance, Karte (ab nächster Ebene), LLM. Nach Neustart:
+llama-server und Webserver. Gespeichert wird in `.env` nur die Abweichung von `.env.example`.
+
+Leerlauf: Abstimmungszeit volle Länge, solange in der letzten Minute jemand geschrieben hat, danach linear
+kürzer bis `IDLE_VOTE_SECONDS` nach `IDLE_MINUTES`. Ohne Stimmen und mit fertiger LLM-Wahl endet die
+Abstimmung nach 3 Sekunden. Lager höchstens `CAMP_MAX_MINUTES`, danach mindestens `CAMP_PAUSE_MINUTES` Erkunden.

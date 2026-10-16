@@ -12,6 +12,10 @@ Die vollständige Beschreibung steht im [Pflichtenheft](docs/pflichtenheft.md), 
 
 Die Figur spricht über den lokalen llama-server (Pfade und Parameter in `.env`, Vorgaben in `.env.example`). `start.bat` startet ihn mit, läuft schon einer auf dem Port, wird er mitgenutzt. Ohne LLM (`LLM_ENABLED=0`) entscheidet die Figur nach eigenem Gespür und bleibt stumm.
 
+Einstellungen: `http://localhost:8000/einstellungen` (nur auf diesem PC erreichbar). Dort lassen sich Abstimmungszeit, Leerlauf, Lager, Balance, Karte, LLM und llama-server einstellen, die meisten Werte wirken sofort. Gespeichert wird in `.env`, und zwar nur, was von `.env.example` abweicht. Außerdem gibt es Knöpfe für „LLM testen“, „Neue Ebene“ und „Neue Figur“.
+
+Ohne Chat wird die Abstimmungszeit nach einer Minute Stille stetig kürzer, bis sie nach `IDLE_MINUTES` bei `IDLE_VOTE_SECONDS` ankommt. Hat die Figur dann schon selbst entschieden, geht sie nach 3 Sekunden los. Das Lager dauert höchstens `CAMP_MAX_MINUTES`, danach erkundet sie mindestens `CAMP_PAUSE_MINUTES` allein weiter.
+
 Zuschauer können die Figur mit `!sag <Text>` ansprechen (pro Zuschauer höchstens alle 30 Sekunden).
 
 Für OBS: Browserquelle mit `http://localhost:8000/`, Größe 1280 x 720 (ohne Test-Chat). Die Grafik wird doppelt vergrößert, mit `?zoom=1` oder `?zoom=3` an der Adresse lässt sich das ändern. In der Stadt folgt das Licht der Uhrzeit des PCs (Abendrot, Nacht mit Lichtkreis um die Figur), zum Ausprobieren `?stunde=22` an die Adresse hängen.

@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Höhlenspiel Einstellungen</title>
+  <style>
+    :root {
+      --bg: #0f0d14;
+      --card: #1a1620;
+      --line: #3a3142;
+      --gold: #f0c674;
+      --text: #e9e2d0;
+      --muted: #a99d86;
+      --ok: #9fe28a;
+      --bad: #ff7a6a;
+      --input: #110f16;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Trebuchet MS", Verdana, sans-serif;
+      font-size: 15px;
+    }
+    header {
+      padding: 22px 24px 8px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+    h1 { margin: 0; color: var(--gold); font-size: 26px; }
+    header p { margin: 6px 0 0; color: var(--muted); }
+    main { max-width: 980px; margin: 0 auto; padding: 8px 24px 120px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 18px 6px;
+      margin: 16px 0;
+    }
+    .card h2 { margin: 0 0 8px; font-size: 18px; color: var(--gold); }
+    .row {
+      display: grid;
+      grid-template-columns: 260px 200px 1fr;
+      gap: 6px 16px;
+      align-items: start;
+      padding: 9px 0;
+      border-top: 1px solid #2a2430;
+    }
+    .row:first-of-type { border-top: none; }
+    .row.changed .label { color: var(--gold); }
+    .label { font-weight: bold; padding-top: 6px; }
+    .badge {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      font-size: 11px;
+      font-weight: normal;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      vertical-align: 1px;
+    }
+    .help { color: var(--muted); font-size: 13px; padding-top: 6px; }
+    .help .def { display: block; margin-top: 3px; }
+    .help .def[hidden] { display: none; }
+    .help a { color: var(--gold); cursor: pointer; text-decoration: underline; }
+    input[type=text], input[type=password], input[type=number] {
+      width: 100%;
+      padding: 6px 8px;
+      font: inherit;
+      color: var(--text);
+      background: var(--input);
+      border: 1px solid var(--line);
+      border-radius: 5px;
+    }
+    input:focus { outline: 2px solid #6b5b3e; }
+    input.error { border-color: var(--bad); }
+    .wide { grid-column: 2 / 4; }
+    label.switch { display: inline-flex; align-items: center; gap: 8px; padding-top: 5px; cursor: pointer; }
+    label.switch input { width: 18px; height: 18px; accent-color: #c08a3e; }
+    button {
+      font: inherit;
+      padding: 7px 14px;
+      color: var(--text);
+      background: #2a2430;
+      border: 1px solid #6b5b3e;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: #352c3c; }
+    button.primary { background: #6b5b3e; color: #fff; font-weight: bold; }
+    button.primary:hover { background: #7d6a48; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    .bar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      background: rgba(15, 13, 20, 0.96);
+      border-top: 1px solid var(--line);
+    }
+    .bar-inner {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    #msg { flex: 1; color: var(--muted); }
+    #msg.ok { color: var(--ok); }
+    #msg.bad { color: var(--bad); }
+    @media (max-width: 760px) {
+      .row { grid-template-columns: 1fr; }
+      .wide { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Höhlenspiel Einstellungen</h1>
+    <p>Die meisten Werte wirken sofort im laufenden Spiel. Was mit „nach Neustart“ markiert ist, gilt erst nach einem neuen Start von start.bat.</p>
+    <div class="actions">
+      <button data-action="llm_test">LLM testen</button>
+      <button data-action="new_level">Neue Ebene erzeugen</button>
+      <button data-action="new_hero">Neue Figur</button>
+    </div>
+  </header>
+  <main id="groups"></main>
+  <div class="bar">
+    <div class="bar-inner">
+      <span id="msg">Lade Einstellungen ...</span>
+      <button id="reset" type="button">Änderungen verwerfen</button>
+      <button id="save" class="primary" type="button" disabled>Speichern</button>
+    </div>
+  </div>
+
+<script>
+let groups = [];
+const saved = {};     // Wert laut Server
+const inputs = {};    // key -> input
+
+const $ = (id) => document.getElementById(id);
+
+function msg(text, kind) {
+  const m = $("msg");
+  m.textContent = text;
+  m.className = kind || "";
+}
+
+function valueOf(key) {
+  const inp = inputs[key];
+  if (inp.type === "checkbox") return inp.checked ? "1" : "0";
+  return inp.value.trim();
+}
+
+function setValue(key, value) {
+  const inp = inputs[key];
+  if (inp.type === "checkbox") inp.checked = value === "1";
+  else inp.value = value;
+}
+
+function changedKeys() {
+  return Object.keys(inputs).filter((k) => valueOf(k) !== saved[k]);
+}
+
+function refresh() {
+  for (const key of Object.keys(inputs)) {
+    const row = inputs[key].closest(".row");
+    row.classList.toggle("changed", valueOf(key) !== saved[key]);
+    const f = row.field;
+    const def = row.querySelector(".def");
+    if (def) def.hidden = valueOf(key) === f.default;
+  }
+  const n = changedKeys().length;
+  $("save").disabled = n === 0;
+  if (n) msg(n === 1 ? "1 Änderung, noch nicht gespeichert" : n + " Änderungen, noch nicht gespeichert");
+}
+
+function render() {
+  const root = $("groups");
+  root.innerHTML = "";
+  for (const g of groups) {
+    const card = document.createElement("section");
+    card.className = "card";
+    const h = document.createElement("h2");
+    h.textContent = g.title;
+    card.appendChild(h);
+    for (const f of g.fields) {
+      saved[f.key] = f.value;
+      const row = document.createElement("div");
+      row.className = "row";
+      row.field = f;
+
+      const label = document.createElement("div");
+      label.className = "label";
+      label.textContent = f.label;
+      if (!f.live) {
+        const b = document.createElement("span");
+        b.className = "badge";
+        b.textContent = "nach Neustart";
+        label.appendChild(b);
+      }
+      row.appendChild(label);
+
+      const cell = document.createElement("div");
+      let inp;
+      if (f.type === "bool") {
+        const wrap = document.createElement("label");
+        wrap.className = "switch";
+        inp = document.createElement("input");
+        inp.type = "checkbox";
+        wrap.appendChild(inp);
+        wrap.appendChild(document.createTextNode("an"));
+        cell.appendChild(wrap);
+      } else {
+        inp = document.createElement("input");
+        inp.type = f.type === "password" ? "password" : (f.type === "int" || f.type === "float") ? "number" : "text";
+        if (f.type === "int") inp.step = "1";
+        if (f.type === "float") inp.step = "any";
+        if (inp.type === "number") inp.min = "0";
+        inp.autocomplete = "off";
+        cell.appendChild(inp);
+      }
+      inp.dataset.key = f.key;
+      inputs[f.key] = inp;
+      // lange Texte (Pfade, Adressen) bekommen die ganze Breite
+      const longText = f.type === "text" || f.type === "password";
+      if (longText) cell.className = "wide";
+      row.appendChild(cell);
+
+      const help = document.createElement("div");
+      help.className = "help";
+      if (longText) help.style.gridColumn = "2 / 4";
+      if (f.help) help.appendChild(document.createTextNode(f.help));
+      const def = document.createElement("span");
+      def.className = "def";
+      def.appendChild(document.createTextNode("Vorgabe: " + (f.type === "bool" ? (f.default === "1" ? "an" : "aus") : (f.default === "" ? "leer" : f.default)) + " "));
+      const a = document.createElement("a");
+      a.textContent = "zurücksetzen";
+      a.addEventListener("click", () => { setValue(f.key, f.default); refresh(); });
+      def.appendChild(a);
+      help.appendChild(def);
+      row.appendChild(help);
+
+      setValue(f.key, f.value);
+      inp.addEventListener("input", () => { inp.classList.remove("error"); refresh(); });
+      inp.addEventListener("change", refresh);
+      card.appendChild(row);
+    }
+    root.appendChild(card);
+  }
+  refresh();
+}
+
+async function load() {
+  try {
+    const r = await fetch("/api/settings");
+    if (!r.ok) throw new Error(await r.text());
+    groups = (await r.json()).groups;
+    render();
+    msg("Alles gespeichert.");
+  } catch (e) {
+    msg("Konnte die Einstellungen nicht laden: " + e.message, "bad");
+  }
+}
+
+async function save() {
+  const keys = changedKeys();
+  if (!keys.length) return;
+  const values = {};
+  keys.forEach((k) => { values[k] = valueOf(k); });
+  $("save").disabled = true;
+  try {
+    const r = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values }),
+    });
+    const data = await r.json();
+    if (!data.ok) {
+      const errs = data.errors || {};
+      Object.keys(errs).forEach((k) => inputs[k] && inputs[k].classList.add("error"));
+      msg("Nicht gespeichert: " + Object.entries(errs).map(([k, v]) => labelOf(k) + " " + v).join(", "), "bad");
+      $("save").disabled = false;
+      return;
+    }
+    groups = data.groups;
+    render();
+    if (data.restart && data.restart.length) {
+      msg("Gespeichert. Nach einem Neustart von start.bat gilt auch: " + data.restart.map(labelOf).join(", ") + ".", "ok");
+    } else {
+      msg("Gespeichert, gilt ab sofort.", "ok");
+    }
+  } catch (e) {
+    msg("Fehler beim Speichern: " + e.message, "bad");
+    $("save").disabled = false;
+  }
+}
+
+function labelOf(key) {
+  for (const g of groups) for (const f of g.fields) if (f.key === key) return f.label;
+  return key;
+}
+
+async function action(name, button) {
+  button.disabled = true;
+  if (name === "llm_test") msg("Frage das LLM ...");
+  try {
+    const r = await fetch("/api/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: name }),
+    });
+    const data = await r.json();
+    if (name === "llm_test") msg(data.text, data.ok ? "ok" : "bad");
+    else msg(name === "new_level" ? "Neue Ebene erzeugt." : "Neue Figur ist unterwegs.", "ok");
+  } catch (e) {
+    msg("Fehler: " + e.message, "bad");
+  }
+  button.disabled = false;
+}
+
+$("save").addEventListener("click", save);
+$("reset").addEventListener("click", () => { Object.keys(inputs).forEach((k) => setValue(k, saved[k])); refresh(); msg("Änderungen verworfen."); });
+document.querySelectorAll("[data-action]").forEach((b) => b.addEventListener("click", () => action(b.dataset.action, b)));
+window.addEventListener("beforeunload", (e) => { if (changedKeys().length) e.preventDefault(); });
+load();
+</script>
+</body>
+</html>
