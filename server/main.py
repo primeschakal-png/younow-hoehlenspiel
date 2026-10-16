@@ -106,7 +106,7 @@ async def younow_loop(app):
     while True:
         try:
             if poller.enabled:
-                await poller.poll_once(game.on_chat, game.on_gift)
+                await poller.poll_once(game.on_chat, game.on_gift, game.on_likes)
                 await broadcast(game.flush())
         except Exception as exc:  # darf nie sterben
             print("Fehler bei der YouNow-Abfrage:", repr(exc))

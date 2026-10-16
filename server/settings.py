@@ -66,6 +66,8 @@ FIELDS = [
     ("YOUNOW_POLL_SECONDS", "younow", "float", "Abfrage alle (Sekunden)", "Kleiner heißt schnellere Reaktion, 3 ist ein guter Wert.", True),
     ("BRIBE_LIKES_PER_VOTE", "younow", "int", "Likes pro Zusatzstimme",
      "Geschenkwert in Likes, der eine zusätzliche Stimme ergibt. Ein Geschenk für 2.500 Likes ist bei 1000 also 2,5 Stimmen wert.", True),
+    ("PLAIN_LIKES_PER_VOTE", "younow", "int", "Normale Likes pro Zusatzstimme",
+     "Einzelne Likes sieht das Spiel nur bei den Top-Fans des Streams (die ersten 6 nach Likes).", True),
     ("SOUND_ENABLED", "ton", "bool", "Ton an", "Musik und Geräusche im Overlay. In OBS bei der Browserquelle „Audio über OBS steuern“ anhaken.", True),
     ("MUSIC_VOLUME", "ton", "int", "Musik (0 bis 100)", "Im Lager und nachts automatisch leiser.", True),
     ("SFX_VOLUME", "ton", "int", "Geräusche (0 bis 100)", "Schritte, Kampf, Truhen, Abstimmung.", True),
@@ -185,6 +187,7 @@ def apply(values, game, llm):
                 v = num(values, key, game_mod.BAL[name])
                 game_mod.BAL[name] = int(v) if key in FIELD and FIELD[key][2] == "int" else v
     game.likes_per_vote = max(1, int(num(values, "BRIBE_LIKES_PER_VOTE", 1000)))
+    game.plain_likes_per_vote = max(1, int(num(values, "PLAIN_LIKES_PER_VOTE", 20)))
     game.chat_overlay = values.get("CHAT_OVERLAY", "0") == "1"
     game.audio = {
         "enabled": values.get("SOUND_ENABLED", "1") == "1",

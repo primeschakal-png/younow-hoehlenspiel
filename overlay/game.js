@@ -1332,7 +1332,7 @@ function handle(msg) {
       break;
     case "gift":
       audio.play("coins");
-      audio.play("coins", 300);
+      if (msg.gift !== "Likes") audio.play("coins", 300);
       break;
     case "chat_overlay":
       setChatVisible(msg.show);

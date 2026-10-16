@@ -129,6 +129,7 @@ class Game:
         self.say_cooldown = {}
         self.bribes = {}                 # Zuschauer -> Zusatzstimmen für die laufende oder nächste Abstimmung
         self.likes_per_vote = 1000       # so viele Likes Geschenkwert ergeben eine Zusatzstimme
+        self.plain_likes_per_vote = 20   # so viele normale Likes ergeben eine Zusatzstimme
         self.recent = []
         self.hero_id = 1
         self.hall = []
@@ -1010,6 +1011,18 @@ class Game:
         else:
             self.log(f"{user} schenkt {gift}. Die nächste Stimme von {user} zählt {de_num(1 + self.bribes[user])}-fach.")
         self.comment(f"Der Zuschauer {user} hat dir gerade das Geschenk {gift} gemacht. Bedank dich kurz bei {user}.", prio=2)
+
+    def on_likes(self, user, count):
+        """Normale Likes eines Top-Fans: kleine Bestechung, ohne Dank-Kommentar."""
+        user = (user or "").strip()[:30] or "Gast"
+        extra = round(count / max(1, self.plain_likes_per_vote), 1)
+        if extra < 0.1:
+            return
+        self.bribes[user] = round(self.bribes.get(user, 0) + extra, 1)
+        self.emit({"type": "gift", "user": user, "gift": "Likes", "likes": count, "extra": extra})
+        if self.state == "voting" and user in self.vote["votes"]:
+            self._announce_bribe(user, self.vote["votes"][user])
+            self.emit({"type": "vote_update", "counts": self._counts()})
 
     def _announce_bribe(self, user, label):
         total = 1 + self.bribes.get(user, 0)

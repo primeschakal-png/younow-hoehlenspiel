@@ -40,6 +40,8 @@ class YouNowPoller:
         self.seen = deque(maxlen=2000)
         self.seen_set = set()
         self.primed_for = None      # für welchen Stream die alten Nachrichten schon übersprungen wurden
+        self.fan_likes = {}         # Top-Fan-Liste: Name -> Likes in diesem Stream beim letzten Abruf
+        self.gift_likes = {}        # Likes aus Geschenken seit dem letzten Abruf (stehen auch in der Top-Fan-Liste)
         self.status = {"state": "aus", "viewers": None, "likes": None, "comments": 0, "gifts": 0,
                        "last_ok": None, "error": None, "broadcast": None}
 
@@ -69,7 +71,7 @@ class YouNowPoller:
         self.seen_set.add(key)
         return True
 
-    def handle(self, data, on_chat, on_gift):
+    def handle(self, data, on_chat, on_gift, on_likes=None):
         """Verarbeitet eine Antwort der Broadcast-Info. Gibt die Zahl neuer Nachrichten zurück."""
         if not isinstance(data, dict) or data.get("errorCode", 0) != 0:
             self.status["state"] = "offline"
@@ -92,15 +94,32 @@ class YouNowPoller:
             gift = parse_gift(text)
             if gift:
                 self.status["gifts"] += 1
+                self.gift_likes[name] = self.gift_likes.get(name, 0) + gift[1]
                 on_gift(name, gift[0], gift[1])
             else:
                 self.status["comments"] += 1
                 on_chat(name, text)
             new += 1
+        # Normale Likes: Die Top-Fan-Liste nennt die Likes pro Zuschauer in diesem Stream.
+        # Der Zuwachs abzüglich der Geschenk-Likes sind normale Likes. Gilt nur für die Top-Fans.
+        for fan in data.get("tfl") or []:
+            name = fan.get("n") or fan.get("name")
+            likes = fan.get("likes")
+            if not name or not isinstance(likes, (int, float)):
+                continue
+            before = self.fan_likes.get(name)
+            self.fan_likes[name] = likes
+            if before is None or first:
+                continue
+            plain = likes - before - self.gift_likes.get(name, 0)
+            if plain > 0 and on_likes:
+                self.status["likes_seen"] = self.status.get("likes_seen", 0) + plain
+                on_likes(name, int(plain))
+        self.gift_likes = {}
         self.primed_for = bid
         return new
 
-    async def poll_once(self, on_chat, on_gift):
+    async def poll_once(self, on_chat, on_gift, on_likes=None):
         url = API.format(user=self.user)
         try:
             async with self.session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as r:
@@ -109,4 +128,4 @@ class YouNowPoller:
             self.status["state"] = "Fehler"
             self.status["error"] = repr(exc)[:200]
             return 0
-        return self.handle(data, on_chat, on_gift)
+        return self.handle(data, on_chat, on_gift, on_likes)
