@@ -34,7 +34,7 @@ html, body {
   left: 50%;
   bottom: 26px;
   transform: translateX(-50%);
-  width: 460px;
+  width: 520px;
   padding: 14px 18px;
   background: rgba(15, 12, 20, 0.88);
   border: 2px solid #6b5b3e;
@@ -45,7 +45,7 @@ html, body {
 #vote-title { font-size: 20px; font-weight: bold; margin-bottom: 10px; color: #f0c674; }
 
 .vote-row { display: flex; align-items: center; margin: 6px 0; }
-.vote-label { width: 130px; font-size: 17px; }
+.vote-label { width: 190px; font-size: 17px; white-space: nowrap; }
 .vote-label small { color: #a99d86; }
 .vote-bar { flex: 1; height: 18px; background: #2a2430; border-radius: 4px; overflow: hidden; }
 .vote-fill { height: 100%; width: 0; background: linear-gradient(90deg, #c08a3e, #f0c674); transition: width 0.3s; }
@@ -53,6 +53,54 @@ html, body {
 .vote-row.win .vote-label { color: #9fe28a; font-weight: bold; }
 
 #vote-timer { margin-top: 10px; font-size: 15px; color: #a99d86; }
+.vote-hint { margin: -2px 0 6px 0; font-size: 13px; font-style: italic; color: #b9c9d6; }
+
+#hero-name { font-size: 18px; margin-top: 4px; }
+#hero-bars { margin-top: 6px; width: 230px; }
+.stat { display: flex; align-items: center; margin: 3px 0; font-size: 13px; }
+.stat-label { width: 46px; }
+.stat-bar { flex: 1; height: 10px; background: rgba(42, 36, 48, 0.9); border-radius: 3px; overflow: hidden; }
+.stat-fill { display: block; height: 100%; transition: width 0.3s; }
+.stat-fill.hp { background: #d9534f; }
+.stat-fill.food { background: #c9a14a; }
+.stat-fill.water { background: #4fa3d9; }
+.stat-val { width: 32px; text-align: right; }
+#hero-inv { font-size: 13px; margin-top: 4px; color: #d8cdb4; white-space: pre; }
+
+#dice {
+  position: absolute;
+  top: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 300px;
+  padding: 12px 18px;
+  text-align: center;
+  background: rgba(15, 12, 20, 0.9);
+  border: 2px solid #6b5b3e;
+  border-radius: 10px;
+}
+.dice-label { font-size: 18px; font-weight: bold; color: #f0c674; }
+.dice-roll { font-size: 26px; margin: 6px 0 2px; }
+.dice-target { font-size: 14px; color: #a99d86; }
+.dice-result { font-size: 20px; font-weight: bold; margin-top: 6px; }
+.dice-result.ok { color: #9fe28a; }
+.dice-result.fail { color: #ff7a6a; }
+
+#death {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 6, 10, 0.82);
+  text-align: center;
+}
+#death-title { font-size: 46px; font-weight: bold; color: #ff7a6a; }
+#death-cause { font-size: 20px; margin: 8px 0 22px; }
+#hall-head { font-size: 20px; color: #f0c674; margin-bottom: 6px; }
+#hall-list { margin: 0; padding: 0; list-style-position: inside; font-size: 16px; color: #d8cdb4; }
+#death-next { margin-top: 22px; font-size: 15px; color: #a99d86; }
 
 #log {
   position: absolute;

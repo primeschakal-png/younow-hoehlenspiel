@@ -11,6 +11,9 @@ import random
 from collections import deque
 
 DIRS = {"N": (0, -1), "E": (1, 0), "S": (0, 1), "W": (-1, 0)}
+LEFT = {"N": "W", "W": "S", "S": "E", "E": "N"}
+RIGHT = {"N": "E", "E": "S", "S": "W", "W": "N"}
+BACK = {"N": "S", "S": "N", "E": "W", "W": "E"}
 
 
 class Maze:

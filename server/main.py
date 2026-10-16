@@ -38,6 +38,8 @@ HOST = ENV.get("HOST", "127.0.0.1")
 PORT = int(ENV.get("PORT", "8000"))
 VOTE_SECONDS = float(ENV.get("VOTE_SECONDS", "28"))
 STEP_SECONDS = float(ENV.get("STEP_SECONDS", "0.25"))
+IDLE_MINUTES = float(ENV.get("IDLE_MINUTES", "5"))
+IDLE_VOTE_SECONDS = float(ENV.get("IDLE_VOTE_SECONDS", "10"))
 
 clients = set()
 
@@ -105,7 +107,12 @@ async def on_cleanup(app):
 
 def make_app():
     app = web.Application()
-    app["game"] = Game(vote_seconds=VOTE_SECONDS, step_seconds=STEP_SECONDS)
+    app["game"] = Game(
+        vote_seconds=VOTE_SECONDS,
+        step_seconds=STEP_SECONDS,
+        idle_minutes=IDLE_MINUTES,
+        idle_vote_seconds=IDLE_VOTE_SECONDS,
+    )
     app.router.add_get("/", index)
     app.router.add_get("/ws", ws_handler)
     app.router.add_static("/static/", OVERLAY)

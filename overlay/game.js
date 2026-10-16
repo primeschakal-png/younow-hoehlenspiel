@@ -16,6 +16,9 @@ let voteEndsAt = 0;
 let voteTimer = null;
 let voteHideTimer = null;
 let logTimer = null;
+let diceTimer = null;
+let heroName = "";
+let currentHints = {};
 
 // ---------------- Phaser ----------------
 
@@ -69,6 +72,46 @@ function makeTextures(sc) {
   g.fillTriangle(TILE / 2, 2, TILE / 2 - 5, 9, TILE / 2 + 5, 9);
   g.generateTexture("pointer", TILE, TILE);
 
+  // Truhe
+  g.clear();
+  g.fillStyle(0x7a4e22); g.fillRect(7, 11, 18, 13);
+  g.fillStyle(0x9a6a33); g.fillRect(7, 9, 18, 6);
+  g.fillStyle(0xe0b84a); g.fillRect(15, 14, 3, 4);
+  g.generateTexture("ent_chest", TILE, TILE);
+
+  // Quelle
+  g.clear();
+  g.fillStyle(0x1d4a6e); g.fillEllipse(16, 18, 22, 12);
+  g.fillStyle(0x4fa3d9); g.fillEllipse(16, 17, 16, 8);
+  g.fillStyle(0xbfe6ff); g.fillRect(14, 15, 3, 2);
+  g.generateTexture("ent_spring", TILE, TILE);
+
+  // Monster
+  g.clear();
+  g.fillStyle(0x000000, 0.35); g.fillEllipse(16, 26, 20, 6);
+  g.fillStyle(0x8f2b2b); g.fillCircle(16, 17, 9);
+  g.fillStyle(0xffe14d); g.fillRect(11, 14, 3, 3); g.fillRect(18, 14, 3, 3);
+  g.generateTexture("ent_monster", TILE, TILE);
+
+  // Schrein
+  g.clear();
+  g.fillStyle(0x5a5470); g.fillRect(11, 12, 10, 14);
+  g.fillStyle(0xb08cff); g.fillCircle(16, 9, 5);
+  g.generateTexture("ent_shrine", TILE, TILE);
+
+  // Pilze
+  g.clear();
+  g.fillStyle(0xd8d0b8); g.fillRect(10, 18, 3, 6); g.fillRect(19, 16, 3, 8);
+  g.fillStyle(0x7fa34a); g.fillEllipse(11, 17, 10, 6); g.fillEllipse(20, 15, 12, 7);
+  g.generateTexture("ent_mushroom", TILE, TILE);
+
+  // Lagerfeuer
+  g.clear();
+  g.fillStyle(0x5a3a1e); g.fillRect(8, 22, 16, 4);
+  g.fillStyle(0xff7a1a); g.fillTriangle(16, 8, 9, 23, 23, 23);
+  g.fillStyle(0xffd34d); g.fillTriangle(16, 14, 12, 23, 20, 23);
+  g.generateTexture("campfire", TILE, TILE);
+
   g.destroy();
 }
 
@@ -82,10 +125,21 @@ class CaveScene extends Phaser.Scene {
     this.stairsImg = null;
     this.stairsPos = null;
     this.step = 0.25;
+    this.entities = new Map();   // id -> { img, x, y }
+    this.campfire = null;
+    this.actText = null;
   }
 
   create() {
     makeTextures(this);
+    this.actText = this.add.text(0, 0, "", {
+      fontFamily: "Trebuchet MS, Verdana, sans-serif",
+      fontSize: "15px",
+      color: "#f3e7c8",
+      backgroundColor: "rgba(15,12,20,0.75)",
+      padding: { x: 6, y: 3 },
+    }).setOrigin(0.5, 1).setDepth(20).setVisible(false);
+    this.campfire = this.add.image(0, 0, "campfire").setDepth(9).setVisible(false);
     scene = this;
     const queued = pending;
     pending = [];
@@ -125,6 +179,10 @@ class CaveScene extends Phaser.Scene {
     this.stairsImg = this.add.image(s.stairs[0] * TILE, s.stairs[1] * TILE, "stairs")
       .setOrigin(0).setDepth(1).setVisible(false);
 
+    for (const e of this.entities.values()) e.img.destroy();
+    this.entities.clear();
+    for (const e of s.entities || []) this.addEntity(e);
+
     if (!this.figure) {
       this.figure = this.add.image(0, 0, "hero").setDepth(10);
       this.pointer = this.add.image(0, 0, "pointer").setDepth(11);
@@ -137,11 +195,27 @@ class CaveScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.figure, true, 0.12, 0.12);
   }
 
+  addEntity(e) {
+    const img = this.add.image(e.x * TILE, e.y * TILE, "ent_" + e.kind).setOrigin(0).setDepth(2);
+    const tile = this.tileImgs[e.y] && this.tileImgs[e.y][e.x];
+    img.setVisible(!!(tile && tile.visible));
+    this.entities.set(e.id, { img, x: e.x, y: e.y });
+  }
+
+  removeEntity(id) {
+    const e = this.entities.get(id);
+    if (!e) return;
+    this.tweens.add({ targets: e.img, alpha: 0, duration: 400, onComplete: () => e.img.destroy() });
+    this.entities.delete(id);
+  }
+
   reveal(list, instant) {
+    const shown = new Set();
     for (const [x, y] of list) {
       const img = this.tileImgs[y] && this.tileImgs[y][x];
       if (!img || img.visible) continue;
       img.setVisible(true);
+      shown.add(x + "," + y);
       if (!instant) {
         img.setAlpha(0);
         this.tweens.add({ targets: img, alpha: 1, duration: 350 });
@@ -149,6 +223,26 @@ class CaveScene extends Phaser.Scene {
       if (this.stairsPos && x === this.stairsPos[0] && y === this.stairsPos[1]) {
         this.stairsImg.setVisible(true);
       }
+    }
+    for (const e of this.entities.values()) {
+      if (shown.has(e.x + "," + e.y)) e.img.setVisible(true);
+    }
+  }
+
+  setCamp(info) {
+    if (info && info.active) {
+      const [x, y] = info.pos;
+      this.campfire.setPosition(x * TILE + TILE / 2 + 22, y * TILE + TILE / 2 + 4).setVisible(true);
+      this.actText.setText(heroName + " " + info.text).setVisible(true);
+    } else {
+      this.campfire.setVisible(false);
+      this.actText.setVisible(false);
+    }
+  }
+
+  update() {
+    if (this.figure && this.actText.visible) {
+      this.actText.setPosition(this.figure.x, this.figure.y - 20);
     }
   }
 
@@ -205,6 +299,12 @@ function renderVote(options, counts, winner) {
       '<div class="vote-bar"><div class="vote-fill"></div></div>' +
       '<div class="vote-count">' + c + "</div>";
     bars.appendChild(row);
+    if (currentHints[opt]) {
+      const hint = document.createElement("div");
+      hint.className = "vote-hint";
+      hint.textContent = currentHints[opt];
+      bars.appendChild(hint);
+    }
     const fill = row.querySelector(".vote-fill");
     requestAnimationFrame(() => { fill.style.width = (total ? (c / total) * 100 : 0) + "%"; });
   }
@@ -212,8 +312,9 @@ function renderVote(options, counts, winner) {
 
 let currentOptions = [];
 
-function startVote(options, seconds, counts) {
+function startVote(options, seconds, counts, hints) {
   currentOptions = options;
+  currentHints = hints || {};
   clearTimeout(voteHideTimer);
   el("vote-title").textContent = "Wohin soll ich gehen?";
   renderVote(options, counts || {}, null);
@@ -237,6 +338,57 @@ function endVote(choice, reason, counts) {
   voteHideTimer = setTimeout(() => el("vote").classList.add("hidden"), 3500);
 }
 
+function bar(label, value, max, cls) {
+  const pct = Math.max(0, Math.min(100, (value / max) * 100));
+  return '<div class="stat"><span class="stat-label">' + label + '</span>' +
+    '<span class="stat-bar"><span class="stat-fill ' + cls + '" style="width:' + pct + '%"></span></span>' +
+    '<span class="stat-val">' + Math.round(value) + "</span></div>";
+}
+
+function renderStats(h) {
+  heroName = h.name;
+  el("hero-name").textContent = h.name;
+  el("hero-bars").innerHTML =
+    bar("Leben", h.hp, h.max_hp, "hp") +
+    bar("Satt", h.hunger, 100, "food") +
+    bar("Durst", h.thirst, 100, "water");
+  el("hero-inv").textContent =
+    "Proviant " + h.food + "   Wasser " + h.water + "   Tränke " + h.potions + "   Gold " + h.gold;
+}
+
+function showDice(m) {
+  const box = el("dice");
+  const sign = m.bonus >= 0 ? " + " : " - ";
+  box.innerHTML =
+    '<div class="dice-label"></div>' +
+    '<div class="dice-roll">W20: ' + m.roll + sign + Math.abs(m.bonus) + " = " + (m.roll + m.bonus) + "</div>" +
+    '<div class="dice-target">nötig: ' + m.target + "</div>" +
+    '<div class="dice-result ' + (m.success ? "ok" : "fail") + '">' + (m.success ? "Geschafft!" : "Misslungen!") + "</div>";
+  box.querySelector(".dice-label").textContent = m.label;
+  box.classList.remove("hidden");
+  clearTimeout(diceTimer);
+  diceTimer = setTimeout(() => box.classList.add("hidden"), 3000);
+}
+
+function renderHall(hall) {
+  const list = el("hall-list");
+  list.innerHTML = "";
+  for (const h of (hall || []).slice().reverse()) {
+    const li = document.createElement("li");
+    li.textContent = h.name + ", Ebene " + h.depth + ", " + h.cause + (h.gold ? ", " + h.gold + " Gold" : "");
+    list.appendChild(li);
+  }
+}
+
+function showDeath(m) {
+  el("death-title").textContent = m.name + " ist tot";
+  el("death-cause").textContent = m.cause[0].toUpperCase() + m.cause.slice(1) + " auf Ebene " + m.depth + ".";
+  renderHall(m.hall);
+  el("death").classList.remove("hidden");
+  el("vote").classList.add("hidden");
+  scene.setCamp(null);
+}
+
 // ---------------- Nachrichten ----------------
 
 function handle(msg) {
@@ -247,9 +399,28 @@ function handle(msg) {
   switch (msg.type) {
     case "state":
       el("depth").textContent = "Ebene " + msg.depth;
+      renderStats(msg.hero);
       scene.buildLevel(msg);
-      if (msg.vote) startVote(msg.vote.options, msg.vote.remaining, msg.vote.counts);
+      scene.setCamp(msg.camp);
+      if (msg.vote) startVote(msg.vote.options, msg.vote.remaining, msg.vote.counts, msg.vote.hints);
       else el("vote").classList.add("hidden");
+      if (msg.dead) showDeath({ name: msg.hero.name, cause: "gefallen", depth: msg.depth, hall: msg.hall });
+      else el("death").classList.add("hidden");
+      break;
+    case "stats":
+      renderStats(msg.hero);
+      break;
+    case "entity_remove":
+      scene.removeEntity(msg.id);
+      break;
+    case "dice":
+      showDice(msg);
+      break;
+    case "camp":
+      scene.setCamp(msg);
+      break;
+    case "death":
+      showDeath(msg);
       break;
     case "reveal":
       scene.reveal(msg.tiles, false);
@@ -258,7 +429,7 @@ function handle(msg) {
       scene.moveFigure(msg.pos, msg.facing, false);
       break;
     case "vote_start":
-      startVote(msg.options, msg.seconds, {});
+      startVote(msg.options, msg.seconds, {}, msg.hints);
       break;
     case "vote_update":
       renderVote(currentOptions, msg.counts, null);

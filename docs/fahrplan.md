@@ -6,27 +6,27 @@ Abhaken mit `[x]`. Abschnittsnummern verweisen auf das [Pflichtenheft](pflichten
 
 Erste lauffähige Version ohne LLM und ohne YouNow.
 
-- [ ] Labyrinth-Generator: Gänge, Kreuzungen, Grotten, Treppe (2)
-- [ ] Python-Server mit Webserver und WebSocket
-- [ ] Phaser-Overlay: Karte mit Autotiling, Nebel, Figur läuft Wegpunkte ab
-- [ ] Test-Chat: Eingabefeld im Overlay statt YouNow
-- [ ] Einfache Abstimmung an Kreuzungen mit Timer
-- [ ] start.bat und .env
+- [x] Labyrinth-Generator: Gänge, Kreuzungen, Grotten, Treppe (2)
+- [x] Python-Server mit Webserver und WebSocket
+- [x] Phaser-Overlay: Karte mit Autotiling, Nebel, Figur läuft Wegpunkte ab
+- [x] Test-Chat: Eingabefeld im Overlay statt YouNow
+- [x] Einfache Abstimmung an Kreuzungen mit Timer
+- [x] start.bat und .env
 
 ## 2. Überleben, Begegnungen und Lager
 
-- [ ] Lebenspunkte, Hunger, Durst, Inventar (3)
-- [ ] Bestückung: Truhen, Monster, Fallen, Quellen, Schreine, Händler, abhängig von der Tiefe
-- [ ] Würfelwürfe und Kämpfe, sichtbar im Overlay
-- [ ] Kreuzungshinweise aus dem Inhalt der Gänge
-- [ ] Lagerzustand im Leerlauf mit Tätigkeiten und Abbruchgründen (7)
-- [ ] Tod und neue Figur
+- [x] Lebenspunkte, Hunger, Durst, Inventar (3)
+- [x] Bestückung: Truhen, Monster, Fallen, Quellen, Schreine, Händler, abhängig von der Tiefe
+- [x] Würfelwürfe und Kämpfe, sichtbar im Overlay
+- [x] Kreuzungshinweise aus dem Inhalt der Gänge
+- [x] Lagerzustand im Leerlauf mit Tätigkeiten und Abbruchgründen (7)
+- [x] Tod und neue Figur (Ehrenhalle vorerst nur im Speicher, dauerhaft in Etappe 7)
 
 ## 3. Entscheider: Abstimmung und Bestechung
 
 - [ ] Eine Stimme pro Zuschauer, umentscheiden erlaubt (4)
 - [ ] Live-Balken im Overlay
-- [ ] Gleichstand und fehlende Stimmen
+- [x] Gleichstand und fehlende Stimmen (ohne Stimmen: Gespür nach Hinweisen und Not, bis Etappe 5 das LLM übernimmt)
 - [ ] Bestechung als Zusatzgewicht, Gegenbieten, öffentliche Nennung (5)
 
 ## 4. Charakter-System
