@@ -20,3 +20,11 @@ Thumbs.db
 assets/narrator/vertonung*
 assets/narrator/funfacts.epub
 assets/narrator/funfacts.txt
+
+# Eigene Musik (z. B. StreamBeats) bleibt lokal: deren Lizenz verbietet die Weitergabe der Dateien.
+# Bereits eingecheckte CC0-Titel sind davon nicht betroffen.
+assets/audio/music/**/*.mp3
+assets/audio/music/**/*.ogg
+assets/audio/music/**/*.wav
+assets/audio/music/**/*.flac
+assets/audio/music/**/*.m4a
