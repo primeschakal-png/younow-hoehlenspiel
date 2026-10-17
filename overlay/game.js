@@ -1690,6 +1690,23 @@ if (TESTCHAT) {
 
 // ---------------- Start ----------------
 
+// Im Browser (z. B. über den geteilten Link) die 1280x720-Bühne ans Fenster anpassen.
+// In OBS ist das Fenster genau 1280x720, dort ändert sich nichts.
+function fitStage() {
+  const st = document.getElementById("stage");
+  const s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+  if (!s || Math.abs(s - 1) < 0.01) {
+    st.style.transform = st.style.left = st.style.top = "";
+    return;
+  }
+  st.style.transformOrigin = "0 0";
+  st.style.transform = `scale(${s})`;
+  st.style.left = Math.max(0, (window.innerWidth - 1280 * s) / 2) + "px";
+  st.style.top = Math.max(0, (window.innerHeight - 720 * s) / 2) + "px";
+}
+window.addEventListener("resize", fitStage);
+fitStage();
+
 new Phaser.Game({
   type: Phaser.AUTO,
   parent: "game",

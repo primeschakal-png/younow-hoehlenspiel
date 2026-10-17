@@ -16,6 +16,7 @@ html, body {
 }
 
 #game { position: absolute; inset: 0; }
+#game canvas { image-rendering: pixelated; }
 
 .hidden { display: none !important; }
 
