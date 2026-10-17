@@ -1,4 +1,4 @@
-"""Erzähler: vorbereitete Sprüche je Anlass aus assets/narrator/narrator.json.
+"""Erzähler: vorbereitete Sprüche je Anlass aus assets/narrator/narrator.json, Fun Facts aus funfacts.json.
 
 Jeder Spruch hat eine ID aus Kategorie und Nummer (kampf_sieg_03). Liegt in assets/narrator/audio
 eine Datei mit dieser ID, wird sie mit abgespielt. Die JSON-Datei wird bei Änderungen neu geladen,
@@ -12,37 +12,45 @@ from collections import deque
 from pathlib import Path
 
 AUDIO_EXT = (".ogg", ".mp3", ".wav", ".m4a", ".opus")
+FILES = ("narrator.json", "funfacts.json")   # Sprüche je Anlass, Fun Facts als eigenes Buch
+FUNFACT_KINDS = {"funfact"}
 
 
 class Narrator:
     def __init__(self, folder):
         self.folder = Path(folder)
-        self.file = self.folder / "narrator.json"
+        self.files = [self.folder / name for name in FILES]
         self.lines = {}
         self.mtime = None
         self.recent = {}
         self.rnd = random.Random()
 
     def _load(self):
-        try:
-            mtime = self.file.stat().st_mtime
-        except OSError:
-            self.lines = {}
+        stamps = []
+        for f in self.files:
+            try:
+                stamps.append(f.stat().st_mtime)
+            except OSError:
+                stamps.append(None)
+        stamps = tuple(stamps)
+        if stamps == self.mtime:
             return
-        if mtime == self.mtime:
-            return
-        try:
-            data = json.loads(self.file.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as exc:
-            print("Erzähler: narrator.json fehlerhaft, alte Sprüche bleiben:", exc)
-            self.mtime = mtime
-            return
-        self.lines = {}
-        for kind, texts in data.items():
-            if kind.startswith("_") or not isinstance(texts, list):
+        lines = {}
+        for f, stamp in zip(self.files, stamps):
+            if stamp is None:
                 continue
-            self.lines[kind] = [(f"{kind}_{i + 1:02d}", str(t)) for i, t in enumerate(texts) if str(t).strip()]
-        self.mtime = mtime
+            try:
+                data = json.loads(f.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as exc:
+                print(f"Erzähler: {f.name} fehlerhaft, alte Sprüche bleiben:", exc)
+                self.mtime = stamps
+                return
+            for kind, texts in data.items():
+                if kind.startswith("_") or not isinstance(texts, list):
+                    continue
+                lines[kind] = [(f"{kind}_{i + 1:02d}", str(t)) for i, t in enumerate(texts) if str(t).strip()]
+        self.lines = lines
+        self.mtime = stamps
 
     @staticmethod
     def _fields(text):

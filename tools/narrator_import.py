@@ -1,9 +1,11 @@
 """Fertige Erzähler-Audiodateien aus einem Booxter-Ausgabeordner übernehmen.
 
 Aufruf: python tools/narrator_import.py "E:\\buchvertonung\\...\\<Ausgabeordner>" [--nummern]
+Gilt für beide Bücher (Sprüche und Fun Facts), die IDs unterscheiden sich.
 Nimmt die Audiodateien direkt in diesem Ordner (keine Unterordner). Zuordnung:
   1. steht die ID im Dateinamen (z. B. "007 - kampf_sieg_03.mp3"), gilt die ID
   2. nur mit --nummern: führende Nummer im Dateinamen = Kapitelnummer aus der letzten vertonung.txt
+     (mit --funfacts aus funfacts.txt)
 Kopiert nach assets/narrator/audio/<ID>.<endung>. Vorhandene Dateien werden nicht überschrieben.
 """
 import re
@@ -23,7 +25,7 @@ src = Path(sys.argv[1])
 nach_nummern = "--nummern" in sys.argv[2:]
 ids = {line_id for lines in Narrator(folder).all_lines().values() for line_id, _ in lines}
 order = []
-listing = folder / "vertonung.txt"
+listing = folder / ("funfacts.txt" if "--funfacts" in sys.argv[2:] else "vertonung.txt")
 if listing.exists():
     order = [line.split("\t", 1)[0] for line in listing.read_text(encoding="utf-8").splitlines() if "\t" in line]
 

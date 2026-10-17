@@ -1,9 +1,11 @@
 """Erzählersprüche für die Vertonung exportieren (Booxter).
 
-Aufruf: python tools/narrator_export.py
+Aufruf: python tools/narrator_export.py            Sprüche je Anlass (narrator.json)
+        python tools/narrator_export.py funfacts   Fun Facts (funfacts.json), eigenes Buch mit eigenem Stil
 Schreibt nach assets/narrator/:
-  vertonung.epub   ein Kapitel pro Spruch, Kapiteltitel = ID (z. B. kampf_sieg_03), im Text steht nur der Spruch
-  vertonung.txt    zur Kontrolle: ID<TAB>Text
+  vertonung.epub / funfacts.epub   ein Kapitel pro Spruch, Kapiteltitel = ID (z. B. kampf_sieg_03),
+                                   im Text steht nur der Spruch
+  vertonung.txt  / funfacts.txt    zur Kontrolle: ID<TAB>Text
 Nur Sprüche ohne {Platzhalter}, bereits vertonte (Datei in audio/) werden übersprungen.
 Danach: tools/narrator_import.py holt die fertigen Audiodateien ab.
 """
@@ -16,9 +18,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "server"))
-from narrator import AUDIO_EXT, Narrator  # noqa: E402
+from narrator import AUDIO_EXT, FUNFACT_KINDS, Narrator  # noqa: E402
 
 folder = ROOT / "assets" / "narrator"
+FUN = "funfacts" in sys.argv[1:]
+NAME = "funfacts" if FUN else "vertonung"
+TITLE = "Funfacts Hoehlenspiel" if FUN else "Erzaehler Hoehlenspiel"
+SOURCE = "funfacts.json" if FUN else "narrator.json"
 
 
 STAT = {"gesamt": 0, "platzhalter": 0, "schon_vertont": 0}
@@ -27,6 +33,8 @@ STAT = {"gesamt": 0, "platzhalter": 0, "schon_vertont": 0}
 def lines_to_voice():
     rows = []
     for kind, lines in Narrator(folder).all_lines().items():
+        if (kind in FUNFACT_KINDS) != FUN:
+            continue
         for line_id, text in lines:
             STAT["gesamt"] += 1
             if "{" in text:
@@ -56,7 +64,7 @@ def write_epub(rows, path):
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid" xml:lang="de">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:identifier id="bookid">{book_id}</dc:identifier>
-    <dc:title>Erzaehler Hoehlenspiel</dc:title>
+    <dc:title>{TITLE}</dc:title>
     <dc:language>de</dc:language>
     <dc:subject>booxter:clips</dc:subject>
     <meta property="dcterms:modified">{now}</meta>
@@ -78,7 +86,7 @@ def write_epub(rows, path):
     ncx = f'''<?xml version="1.0" encoding="utf-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
   <head><meta name="dtb:uid" content="{book_id}"/></head>
-  <docTitle><text>Erzaehler Hoehlenspiel</text></docTitle>
+  <docTitle><text>{TITLE}</text></docTitle>
   <navMap>
 {points}
   </navMap>
@@ -99,15 +107,15 @@ def write_epub(rows, path):
 
 
 rows = lines_to_voice()
-(folder / "vertonung.txt").write_text("".join(f"{i}\t{t}\n" for i, t in rows), encoding="utf-8")
+(folder / f"{NAME}.txt").write_text("".join(f"{i}\t{t}\n" for i, t in rows), encoding="utf-8")
 old = folder / "vertonung_kapitel.txt"
 if old.exists():
     old.unlink()
-write_epub(rows, folder / "vertonung.epub")
-print(f"{STAT['gesamt']} Sprüche in narrator.json, davon {STAT['platzhalter']} mit Platzhaltern (nicht vertonbar) "
+write_epub(rows, folder / f"{NAME}.epub")
+print(f"{STAT['gesamt']} Sprüche in {SOURCE}, davon {STAT['platzhalter']} mit Platzhaltern (nicht vertonbar) "
       f"und {STAT['schon_vertont']} schon vertont (Datei in assets/narrator/audio).")
-print(f"{len(rows)} Sprüche exportiert: assets/narrator/vertonung.epub (für Booxter) und vertonung.txt (zur Kontrolle)")
+print(f"{len(rows)} Sprüche exportiert: assets/narrator/{NAME}.epub (für Booxter) und {NAME}.txt (zur Kontrolle)")
 if STAT["gesamt"] == 0:
-    print("narrator.json nicht gefunden oder fehlerhaft:", folder / "narrator.json")
+    print(f"{SOURCE} nicht gefunden oder fehlerhaft:", folder / SOURCE)
 elif not rows and STAT["schon_vertont"]:
     print("Alles schon vertont. Zum Neu-Vertonen die Dateien in assets/narrator/audio löschen.")

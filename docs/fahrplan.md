@@ -71,3 +71,11 @@ Erste lauffähige Version ohne LLM und ohne YouNow.
 - [ ] ffmpeg mit Überwachungsschleife
 - [ ] LLM über API
 - [ ] YouNow-Nutzungsbedingungen zu Dauer-Streams prüfen (8.5)
+
+## 9. Fun Facts der Erzählerin
+
+- [x] Liste in assets/narrator/funfacts.json (frech, spricht den Chat an), eigenes Booxter-Buch: `python tools/narrator_export.py funfacts`
+- [ ] Fakten vor dem Vertonen per Websuche gegenprüfen
+- [ ] Vertonen mit festem Stil ohne Regie, Import wie bei den Sprüchen
+- [ ] Im Spiel: zufällig in ruhigen Momenten (Lager, Leerlauf) mit eigener Abklingzeit
+- [ ] Chatbefehl `!fakt` mit globaler Sperre, Name nur im Overlay
