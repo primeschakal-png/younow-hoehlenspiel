@@ -26,6 +26,12 @@ Ton: Musik je Gebiet und Geräusche zu den Ereignissen, alles CC0 (siehe `assets
 
 Grafik: Kacheln aus „Mage City Arcanos“ von Hyptosis (CC0), Unterwelt, Monster und Gegenstände aus „Dungeon Crawl Stone Soup“ (CC0), Spielfigur aus dem LPC-Generator (OGA-BY 3.0), siehe `assets/CREDITS.md`.
 
+## Spiel im Internet zeigen
+
+`teilen.bat` macht das laufende Spiel über einen Cloudflare-Tunnel unter einer öffentlichen Adresse
+(`...trycloudflare.com`) erreichbar, ohne Videostream: Jeder Zuschauer sieht das Spiel live in seinem Browser.
+Einmalig nötig: `winget install --id Cloudflare.cloudflared`. Einstellungsseite und Test-Chat bleiben dabei gesperrt.
+
 ## Aufbau
 
 ```

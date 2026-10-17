@@ -65,7 +65,7 @@ async def ws_handler(request):
                 data = json.loads(msg.data)
             except ValueError:
                 continue
-            if data.get("type") == "chat":
+            if data.get("type") == "chat" and is_local(request):   # Test-Chat nur vom eigenen PC
                 game.on_chat(str(data.get("user", "")), str(data.get("text", "")))
                 await broadcast(game.flush())
     finally:
@@ -172,10 +172,21 @@ async def on_cleanup(app):
 
 # ---------- Einstellungsseite ----------
 
+def is_local(request):
+    if request.remote not in ("127.0.0.1", "::1", "localhost"):
+        return False
+    return not any(h in request.headers for h in ("X-Forwarded-For", "CF-Connecting-IP", "X-Real-IP", "Forwarded"))
+
+
 def local_only(request):
     """Einstellungen nur vom eigenen PC aus, auch wenn HOST=0.0.0.0 gesetzt ist."""
     if request.remote not in ("127.0.0.1", "::1", "localhost"):
         raise web.HTTPForbidden(text="Einstellungen nur auf diesem PC.")
+    # Über einen Tunnel (teilen.bat) kommen fremde Anfragen scheinbar von 127.0.0.1,
+    # erkennbar an den Weiterleitungs-Kopfzeilen. Die bleiben draußen.
+    for h in ("X-Forwarded-For", "CF-Connecting-IP", "X-Real-IP", "Forwarded"):
+        if h in request.headers:
+            raise web.HTTPForbidden(text="Einstellungen nur auf diesem PC.")
 
 
 async def settings_page(request):
