@@ -17,4 +17,4 @@ logs/
 Thumbs.db
 
 # Erzeugte Listen zum Vertonen
-assets/narrator/vertonung*.txt
+assets/narrator/vertonung*
