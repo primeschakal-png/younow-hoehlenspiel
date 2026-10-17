@@ -82,6 +82,9 @@ def de_num(x):
 
 
 SAY_COOLDOWN = 30          # Sekunden zwischen zwei !sag-Antworten an denselben Zuschauer
+GREET_GAP = 20             # Sekunden zwischen zwei Grüßen im Vorbeigehen (alle zusammen)
+GREET_PER_NPC = 180        # derselbe Bewohner grüßt höchstens so oft
+SIGHT = 8                  # Kacheln um die Figur, die im Bild sind
 FACT_COMMANDS = ("!fakt", "!fact", "!funfact")
 LLM_STALE = 20             # Kommentare, die so lange warten, sind nicht mehr aktuell
 
@@ -133,6 +136,7 @@ class Game:
         self.talk = None
         self.last_hero_talk = -1e9
         self.last_npc_talk = -1e9
+        self.last_greet = -1e9               # kurze Grüße im Vorbeigehen, für alle zusammen
         self.overview = False
         self.speech = []                   # geplante Sprechzeilen: (zeit, nachricht)
         # Erzähler
@@ -474,15 +478,54 @@ class Game:
                 self._end_talk(t)
         if t and t["started"] and now > t["until"]:
             self._end_talk(t)
-        # im Überblick reden auch Bewohner miteinander
-        if (self.overview and not self.talk and now - self.last_npc_talk > self.npc_talk_cooldown
-                and len(self.npcs) >= 2):
-            free = [n for n in self.npcs if not n.busy(now) and not n.path]
+        self._greet_tick(now)
+        # Bewohner reden miteinander: im Überblick überall, sonst nur in Sichtweite der Figur und seltener
+        gap = self.npc_talk_cooldown if self.overview else self.npc_talk_cooldown * 2
+        if not self.talk and now - self.last_npc_talk > gap and len(self.npcs) >= 2:
+            free = [n for n in self.npcs if not n.busy(now) and not n.path
+                    and (self.overview or townsfolk.distance(n.pos, self.pos) <= SIGHT)]
             for i, a in enumerate(free):
                 for b in free[i + 1:]:
                     if townsfolk.distance(a.pos, b.pos) <= 2.5:
                         self._start_npc_talk(a, b, now)
                         return
+
+    def _greet_tick(self, now):
+        """Kurze Grüße, wenn die Figur an einem Bewohner vorbeiläuft oder sich zwei Bewohner in ihrer
+        Nähe begegnen. Ohne Anhalten und ohne LLM, mit Sperre, damit es nicht ständig grüßt."""
+        if self.talk or self.overview or not self.npcs or now - self.last_greet < GREET_GAP:
+            return
+        hour = datetime.now().hour
+        part = "nacht" if hour >= 21 or hour < 6 else "tag"
+        ready = [n for n in self.npcs if not n.busy(now) and now - n.last_greet > GREET_PER_NPC]
+        if self.state == "walking":
+            near = [n for n in ready if townsfolk.distance(n.pos, self.pos) <= 1.6]
+            if near:
+                n = near[0]
+                if self.rnd.random() < 0.6:
+                    lines = [(n, self.rnd.choice(townsfolk.PASS_NPC[part])), (None, self.rnd.choice(townsfolk.PASS_HERO))]
+                else:
+                    lines = [(None, self.rnd.choice(townsfolk.PASS_HERO_FIRST)), (n, self.rnd.choice(townsfolk.PASS_NPC_REPLY))]
+                self._queue_greet(lines, now, [n])
+                return
+        seen = [n for n in ready if townsfolk.distance(n.pos, self.pos) <= SIGHT]
+        for i, a in enumerate(seen):
+            for b in seen[i + 1:]:
+                if townsfolk.distance(a.pos, b.pos) <= 1.6:
+                    first, second = self.rnd.choice(townsfolk.PASS_PAIR[part])
+                    self._queue_greet([(a, first), (b, second)], now, [a, b])
+                    return
+
+    def _queue_greet(self, lines, now, people):
+        self.last_greet = now
+        at = now + 0.2
+        for who, text in lines:
+            msg = ({"type": "say", "text": text, "to": None} if who is None
+                   else {"type": "npc_say", "id": who.id, "name": who.name, "text": text})
+            self.speech.append((at, msg))
+            at += 2.2
+        for n in people:
+            n.last_greet = now
 
     def _try_hero_talk(self, walking):
         now = time.monotonic()

@@ -63,6 +63,7 @@ class Townsfolk:
         self.wait = rnd.randint(0, 20)      # Takte Pause
         self.talk_until = 0.0
         self.last_talk = -1e9
+        self.last_greet = -1e9
         self.ticks = 0
 
     def describe(self):
@@ -162,3 +163,29 @@ GREETINGS = [
 
 def fallback_lines(rnd):
     return list(rnd.choice(GREETINGS))
+
+
+# Kurze Grüße im Vorbeigehen: ohne Anhalten, ohne LLM
+PASS_NPC = {
+    "tag": ["Na, auch unterwegs?", "Schönen Tag noch!", "Pass auf dich auf.", "Wieder auf Schatzsuche?",
+            "Da unten soll es spuken, hab ich gehört.", "Grüß dich, Fremder.", "Nicht so schnell, du verpasst die Aussicht.",
+            "Hast du die Ratten gesehen? Riesig!", "Guter Tag zum Abenteuern.", "Ah, der Held von der Abstimmung.",
+            "Vorsicht an der Ecke, da ist es glatt.", "Na, wohin des Weges?"],
+    "nacht": ["So spät noch draußen?", "Nachts sind die Gassen nicht geheuer.", "Gute Nacht, Wanderer.",
+              "Bleib im Licht der Laternen.", "Du siehst müde aus.", "Hörst du das auch? Nein? Gut."],
+}
+PASS_HERO = ["Grüß dich!", "Danke, gleichfalls.", "Bin schon weg.", "Immer doch.", "Mach ich.",
+             "Keine Zeit, der Chat wartet.", "Ebenso!", "Wird schon schiefgehen.", "Später vielleicht!"]
+PASS_HERO_FIRST = ["Moin!", "Schönen Tag!", "Na, alles gut?", "Grüß dich!", "Hallo zusammen.",
+                   "Wisst ihr, wo die Treppe ist? Nein? Schon gut."]
+PASS_NPC_REPLY = ["Moin, moin.", "Gleichfalls!", "Ja, ja, geht so.", "Hmpf.", "Viel Glück da unten!",
+                  "Treppe? Frag die Ratten.", "Nur zu, nur zu."]
+PASS_PAIR = {
+    "tag": [("Morgen!", "Morgen. Schon wieder so ein Wetter."), ("Na, wie läuft's?", "Frag nicht."),
+            ("Schon gehört? Ein Neuer ist unterwegs.", "Die kommen und gehen."),
+            ("Hast du meine Katze gesehen?", "Welche von den zwanzig?"), ("Grüß dich!", "Ebenso, ebenso."),
+            ("Heute schon was verkauft?", "Nur Ausreden.")],
+    "nacht": [("Noch wach?", "Wer kann bei dem Mond schon schlafen."), ("Gute Nacht!", "Schlaf gut, wenn du kannst."),
+              ("Die Laternen flackern wieder.", "Das tun sie, wenn jemand lauscht."),
+              ("Psst, nicht so laut.", "Ich hab doch gar nichts gesagt.")],
+}
