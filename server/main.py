@@ -59,6 +59,7 @@ async def ws_handler(request):
     await ws.prepare(request)
     clients.add(ws)
     await ws.send_str(json.dumps(game.full_state()))
+    warned, last_sent = False, 0.0
     try:
         async for msg in ws:
             if msg.type != WSMsgType.TEXT:
@@ -67,9 +68,21 @@ async def ws_handler(request):
                 data = json.loads(msg.data)
             except ValueError:
                 continue
-            if data.get("type") == "chat" and is_local(request):   # Test-Chat nur vom eigenen PC
-                game.on_chat(str(data.get("user", "")), str(data.get("text", "")))
-                await broadcast(game.flush())
+            if data.get("type") != "chat":
+                continue
+            # Test-Chat: vom eigenen PC immer, über den geteilten Link nur mit dem richtigen Schlüssel
+            local = is_local(request)
+            if not local and not share_key_ok(request):
+                if not warned:
+                    warned = True
+                    await ws.send_str(json.dumps({"type": "log", "text": "Mitschreiben ist über diesen Link nicht freigegeben."}))
+                continue
+            now = time.monotonic()
+            if not local and now - last_sent < 2:      # Gäste: höchstens eine Nachricht alle 2 Sekunden
+                continue
+            last_sent = now
+            game.on_chat(str(data.get("user", "")), str(data.get("text", "")))
+            await broadcast(game.flush())
     finally:
         clients.discard(ws)
     return ws
@@ -149,6 +162,7 @@ def count_npc_sprites():
 
 def apply_all(app, values):
     settings.apply(values, app["game"], app["llm"])
+    app["share_key"] = (values.get("SHARE_CHAT_KEY") or "").strip()
     app["game"].npc_sprite_count = count_npc_sprites()
     app["younow"].configure(values.get("YOUNOW_ENABLED", "0") == "1", values.get("YOUNOW_USER", ""),
                             settings.num(values, "YOUNOW_POLL_SECONDS", 3))
@@ -173,6 +187,11 @@ async def on_cleanup(app):
 
 
 # ---------- Einstellungsseite ----------
+
+def share_key_ok(request):
+    key = request.app.get("share_key", "")
+    return bool(key) and request.query.get("key", "") == key
+
 
 def is_local(request):
     if request.remote not in ("127.0.0.1", "::1", "localhost"):

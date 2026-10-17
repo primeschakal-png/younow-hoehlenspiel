@@ -1663,7 +1663,8 @@ function handle(msg) {
 
 function connect() {
   const proto = location.protocol === "https:" ? "wss://" : "ws://";
-  ws = new WebSocket(proto + location.host + "/ws");
+  const key = params.get("key");
+  ws = new WebSocket(proto + location.host + "/ws" + (key ? "?key=" + encodeURIComponent(key) : ""));
   ws.onopen = () => setStatus("");
   ws.onmessage = (e) => {
     try { handle(JSON.parse(e.data)); } catch (err) { console.error(err); }

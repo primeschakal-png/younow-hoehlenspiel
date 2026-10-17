@@ -7,7 +7,8 @@ title Hoehlenspiel teilen - oeffentlicher Link
 rem ================================================================
 rem  Zeigt das laufende Spiel ueber einen Cloudflare-Tunnel im Internet.
 rem  Vorher start.bat starten. Fenster schliessen beendet den Link.
-rem  Zuschauer sehen nur das Spiel, Einstellungen und Test-Chat bleiben gesperrt.
+rem  Zuschauer sehen nur das Spiel, die Einstellungen bleiben gesperrt.
+rem  Mitschreiben nur mit SHARE_CHAT_KEY (Einstellungsseite, Bereich Webserver).
 rem ================================================================
 
 for /f "usebackq eol=# tokens=1,* delims==" %%A in (".env.example") do set "%%A=%%B"
@@ -31,6 +32,12 @@ if errorlevel 1 (
 
 echo Gleich erscheint unten eine Adresse, die auf .trycloudflare.com endet.
 echo Diese Adresse kannst du weitergeben. Sie gilt, solange dieses Fenster offen ist.
+if defined SHARE_CHAT_KEY (
+  echo.
+  echo Zum Mitschreiben an die Adresse anhaengen:  /?testchat=1^&key=%SHARE_CHAT_KEY%
+) else (
+  echo Mitschreiben ist aus. Freigeben: Einstellungsseite, Webserver, Schluessel fuer den Chat.
+)
 echo.
 cloudflared tunnel --url http://127.0.0.1:%PORT%
 pause

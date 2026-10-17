@@ -38,7 +38,9 @@ dann spricht der Erzähler sie, und die Musik wird solange leiser. Häufigkeit a
 
 `teilen.bat` macht das laufende Spiel über einen Cloudflare-Tunnel unter einer öffentlichen Adresse
 (`...trycloudflare.com`) erreichbar, ohne Videostream: Jeder Zuschauer sieht das Spiel live in seinem Browser.
-Einmalig nötig: `winget install --id Cloudflare.cloudflared`. Einstellungsseite und Test-Chat bleiben dabei gesperrt.
+Einmalig nötig: `winget install --id Cloudflare.cloudflared`. Die Einstellungsseite bleibt dabei gesperrt.
+Mitschreiben über den Link: auf der Einstellungsseite unter Webserver einen Schlüssel setzen, dann die Adresse mit
+`/?testchat=1&key=<Schlüssel>` weitergeben (Gäste höchstens eine Nachricht alle 2 Sekunden).
 
 ## Aufbau
 

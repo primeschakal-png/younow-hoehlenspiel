@@ -105,6 +105,9 @@ FIELDS = [
     ("LLAMA_EXTRA", "llama", "text", "Weitere Parameter", "", False),
     ("HOST", "web", "text", "Adresse", "127.0.0.1: nur dieser PC. 0.0.0.0: auch andere Geräte im Netz.", False),
     ("PORT", "web", "int", "Port", "", False),
+    ("SHARE_CHAT_KEY", "web", "text", "Schlüssel für den Chat über den geteilten Link",
+     "Leer: über teilen.bat nur zuschauen. Mit Schlüssel kann mitschreiben, wer die Adresse mit "
+     "/?testchat=1&key=<Schlüssel> öffnet. Ein Wort ohne Leerzeichen, z. B. eichhorn42.", True),
 ]
 
 FIELD = {f[0]: f for f in FIELDS}
