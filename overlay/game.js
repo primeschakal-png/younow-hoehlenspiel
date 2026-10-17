@@ -354,7 +354,14 @@ const SFX = {
 };
 // Lautstärke je Geräuschart (zusätzlich zum Regler)
 const SFX_GAIN = { step: 0.25, voteStart: 0.5, voteEnd: 0.4, growl: 0.55, pain: 0.5, coins: 0.7, bag: 0.6 };
-const MUSIC = { stadt: "music_stadt", unter: "music_unterwelt" };
+// Fehlt Musik für eine Stimmung, wird die nächstpassende genommen
+const MUSIC_FALLBACK = {
+  stadt: ["stadt", "nacht"],
+  nacht: ["nacht", "stadt"],
+  keller: ["keller", "katakomben", "hoehle"],
+  katakomben: ["katakomben", "hoehle", "keller"],
+  hoehle: ["hoehle", "katakomben", "keller"],
+};
 
 const audio = {
   scene: null,
@@ -371,7 +378,7 @@ const audio = {
     const hint = document.getElementById("sound-hint");
     const update = () => hint && hint.classList.toggle("hidden", !(this.enabled && scene.sound.locked));
     update();
-    scene.sound.on("unlocked", () => { update(); this.playMusic(this.wantKey, true); });
+    scene.sound.on("unlocked", () => { update(); this.playMusic(this.wantMood, true); });
     document.addEventListener("pointerdown", update);
   },
 
@@ -381,7 +388,7 @@ const audio = {
     if (typeof cfg.music === "number") this.music = cfg.music;
     if (typeof cfg.sfx === "number") this.sfx = cfg.sfx;
     if (!this.enabled) this.stopMusic();
-    else this.playMusic(this.wantKey, true);
+    else this.playMusic(this.wantMood, true);
     const hint = document.getElementById("sound-hint");
     if (hint && this.scene) hint.classList.toggle("hidden", !(this.enabled && this.scene.sound.locked));
   },
@@ -410,31 +417,68 @@ const audio = {
     return this.music * (this.quiet ? 0.45 : 1);
   },
 
-  playMusic(key, force) {
-    this.wantKey = key;
-    if (!key || !this.enabled || !this.scene || this.music <= 0) {
+  // Musik: je Stimmung ein Ordner unter assets/audio/music/, Stücke in zufälliger Reihenfolge
+  async loadTracks() {
+    try {
+      this.tracks = await (await fetch("/api/music", { cache: "no-store" })).json();
+    } catch (e) { /* Server weg, alte Liste behalten */ }
+  },
+
+  tracksFor(mood) {
+    const t = this.tracks || {};
+    for (const m of MUSIC_FALLBACK[mood] || [mood]) if (t[m] && t[m].length) return t[m];
+    for (const list of Object.values(t)) if (list.length) return list;
+    return [];
+  },
+
+  playMusic(mood, force) {
+    this.wantMood = mood;
+    if (!mood || !this.enabled || !this.scene || this.music <= 0) {
       this.stopMusic();
       return;
     }
-    if (!this.scene.cache.audio.exists(key)) return;
-    if (this.currentKey === key && this.current && !force) return;
-    if (this.currentKey === key && this.current && this.current.isPlaying) {
+    if (this.currentMood === mood && this.current && !force) return;
+    if (this.currentMood === mood && this.current && this.current.isPlaying) {
       this.scene.tweens.add({ targets: this.current, volume: this.musicVolume(), duration: 1500 });
       return;
     }
-    this.stopMusic();
-    const snd = this.scene.sound.add(key, { loop: true, volume: 0 });
-    snd.play();
-    this.scene.tweens.add({ targets: snd, volume: this.musicVolume(), duration: 3000 });
-    this.current = snd;
-    this.currentKey = key;
+    const list = this.tracksFor(mood);
+    if (!list.length) return;
+    let url = list[Math.floor(Math.random() * list.length)];
+    if (list.length > 1 && url === this.lastUrl) url = list[(list.indexOf(url) + 1) % list.length];
+    this.currentMood = mood;
+    const key = "m:" + url;
+    const go = () => {
+      if (this.wantMood !== mood || !this.enabled) return;
+      this.stopMusic();
+      this.currentMood = mood;
+      const snd = this.scene.sound.add(key, { volume: 0 });
+      snd.once("complete", () => {          // Stück zu Ende: nächstes aus derselben Stimmung
+        if (this.current !== snd) return;
+        this.current = null;
+        this.scene.tweens.killTweensOf(snd);
+        snd.destroy();
+        this.playMusic(this.wantMood, true);
+      });
+      snd.play();
+      this.scene.tweens.add({ targets: snd, volume: this.musicVolume(), duration: 3000 });
+      this.current = snd;
+      this.lastUrl = url;
+    };
+    if (this.scene.cache.audio.exists(key)) go();
+    else {
+      this.scene.load.audio(key, url);
+      this.scene.load.once("filecomplete-audio-" + key, go);
+      this.scene.load.start();
+    }
   },
 
   stopMusic() {
     if (!this.current) return;
     const old = this.current;
     this.current = null;
-    this.currentKey = null;
+    this.currentMood = null;
+    this.scene.tweens.killTweensOf(old);
     this.scene.tweens.add({ targets: old, volume: 0, duration: 2000, onComplete: () => old.destroy() });
   },
 
@@ -473,8 +517,6 @@ class CaveScene extends Phaser.Scene {
         if (!this.cache.audio.exists("sfx_" + name)) this.load.audio("sfx_" + name, "assets/audio/sfx/" + name + ".ogg");
       }
     }
-    this.load.audio("music_stadt", "assets/audio/music/stadt.ogg");
-    this.load.audio("music_unterwelt", "assets/audio/music/unterwelt.ogg");
     for (const key of new Set(Object.values(MONSTER_KEYS))) this.load.image("mon_" + key, "assets/dcss/monster/" + key + ".png");
     for (const key of ITEM_KEYS) this.load.image("item_" + key, "assets/dcss/item/" + key + ".png");
   }
@@ -530,6 +572,7 @@ class CaveScene extends Phaser.Scene {
     const areaKey = (s.area && s.area.key) || "stadt";
     const under = UNDER[areaKey] && this.textures.exists("unter") && this.cache.json.get("unterwelt") ? UNDER[areaKey] : null;
     this.under = under;
+    this.areaKey = areaKey;
     if (under) this.buildUnderground(s, under);
     else this.buildCity(s);
     this.stairsPos = s.stairs;
@@ -835,6 +878,11 @@ class CaveScene extends Phaser.Scene {
   }
 
   // Dunkelheit mit Lichtkreis um die Figur (unter Tage)
+  musicMood() {
+    if (this.under) return this.areaKey || "hoehle";
+    return this.night ? "nacht" : "stadt";
+  }
+
   // unter Tage zählt nur das Gebiet, in der Stadt die Tageszeit
   applyAmbient() {
     if (this.under) {
@@ -845,8 +893,10 @@ class CaveScene extends Phaser.Scene {
       return;
     }
     const t = daytime(currentHour());
+    const wasNight = this.night;
     this.night = t.dark > 0.3;
     audio.setQuiet(this.camping || this.night);
+    if (wasNight !== undefined && wasNight !== this.night) audio.playMusic(this.musicMood());
     this.ambient.setFillStyle(t.color, t.tint).setVisible(t.tint > 0.01);
     // im Überblick kein Lichtkreis, sonst wäre nachts fast alles schwarz
     this.setDarkness(t.dark > 0.01 && !this.overview ? t.dark : 0);
@@ -1453,7 +1503,7 @@ function handle(msg) {
       lastDepth = msg.depth;
       audio.configure(msg.audio);
       setChatVisible(msg.chat_overlay);
-      audio.playMusic(msg.area && msg.area.key !== "stadt" ? MUSIC.unter : MUSIC.stadt);
+      audio.loadTracks().then(() => audio.playMusic(scene.musicMood()));
       el("depth").textContent = "Ebene " + msg.depth + (msg.area ? " · " + msg.area.name : "");
       renderStats(msg.hero);
       lastArchetype = null;

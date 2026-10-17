@@ -22,7 +22,7 @@ Zuschauer können die Figur mit `!sag <Text>` ansprechen (pro Zuschauer höchste
 
 Für OBS: Browserquelle mit `http://localhost:8000/`, Größe 1280 x 720 (ohne Test-Chat). Die Grafik wird doppelt vergrößert, mit `?zoom=1` oder `?zoom=3` an der Adresse lässt sich das ändern. In der Stadt folgt das Licht der Uhrzeit des PCs (Abendrot, Nacht mit Lichtkreis um die Figur), zum Ausprobieren `?stunde=22` an die Adresse hängen.
 
-Ton: Musik je Gebiet und Geräusche zu den Ereignissen, alles CC0 (siehe `assets/CREDITS.md`). In OBS bei der Browserquelle „Audio über OBS steuern“ anhaken, dann steht der Ton als eigene Spur im Audiomixer. Lautstärken auf der Einstellungsseite. Im normalen Browser muss man einmal ins Bild klicken, bevor Ton kommt.
+Ton: Musik je Gebiet und Geräusche zu den Ereignissen, alles CC0 (siehe `assets/CREDITS.md`). In OBS bei der Browserquelle „Audio über OBS steuern“ anhaken, dann steht der Ton als eigene Spur im Audiomixer. Lautstärken auf der Einstellungsseite. Musik liegt je Stimmung in `assets/audio/music/stadt`, `nacht`, `keller`, `katakomben` und `hoehle` (.ogg, .mp3, .wav). Das Spiel spielt alles aus dem passenden Ordner in zufälliger Reihenfolge, neue Dateien gelten ab der nächsten Ebene. Ist ein Ordner leer, kommt Musik aus einer ähnlichen Stimmung. Im normalen Browser muss man einmal ins Bild klicken, bevor Ton kommt.
 
 Grafik: Kacheln aus „Mage City Arcanos“ von Hyptosis (CC0), Unterwelt, Monster und Gegenstände aus „Dungeon Crawl Stone Soup“ (CC0), Spielfigur aus dem LPC-Generator (OGA-BY 3.0), siehe `assets/CREDITS.md`.
 

@@ -33,6 +33,6 @@ Alle Klänge CC0 (gemeinfrei), Nennung erwünscht, aber nicht nötig.
 - **Monster SFX Pack** von Ogrebane, https://opengameart.org/content/monster-sound-effects-pack
   Dateien: `audio/sfx/monster*.ogg` (aus WAV umgewandelt)
 - **The Old Tower Inn** von RandomMind, https://opengameart.org/content/medieval-the-old-tower-inn
-  Datei: `audio/music/stadt.ogg` (Stille am Anfang und Ende gekürzt, umgewandelt)
+  Datei: `audio/music/stadt/old_tower_inn.ogg` (Stille am Anfang und Ende gekürzt, umgewandelt)
 - **Loopable dungeon ambience** von JaggedStone, https://opengameart.org/content/loopable-dungeon-ambience
-  Datei: `audio/music/unterwelt.ogg`
+  Datei: `audio/music/hoehle/dungeon_ambience.ogg`

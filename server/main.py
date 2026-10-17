@@ -12,6 +12,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from urllib.parse import quote
 
 from aiohttp import WSMsgType, web
 
@@ -111,6 +112,21 @@ async def younow_loop(app):
         except Exception as exc:  # darf nie sterben
             print("Fehler bei der YouNow-Abfrage:", repr(exc))
         await asyncio.sleep(poller.interval if poller.enabled else 2)
+
+
+MUSIC_DIR = ROOT / "assets" / "audio" / "music"
+MUSIC_MOODS = ["stadt", "nacht", "keller", "katakomben", "hoehle"]
+MUSIC_EXT = {".ogg", ".mp3", ".wav", ".m4a", ".opus", ".flac"}
+
+
+async def music_list(request):
+    """Musikstücke je Stimmung. Neue Dateien in den Ordnern gelten ab der nächsten Ebene, ohne Neustart."""
+    out = {}
+    for mood in MUSIC_MOODS:
+        folder = MUSIC_DIR / mood
+        files = sorted(f for f in folder.iterdir() if f.suffix.lower() in MUSIC_EXT) if folder.is_dir() else []
+        out[mood] = ["assets/audio/music/" + quote(mood) + "/" + quote(f.name) for f in files]
+    return web.json_response(out)
 
 
 async def younow_status(request):
@@ -286,6 +302,7 @@ def make_app():
     app.router.add_post("/api/younow/raw", younow_raw)
     app.router.add_get("/api/younow/raw", younow_raw_info)
     app.router.add_get("/api/younow/status", younow_status)
+    app.router.add_get("/api/music", music_list)
     app.router.add_get("/api/younow/raw.jsonl", younow_raw_download)
     app.router.add_get("/ws", ws_handler)
     app.router.add_static("/static/", OVERLAY)
