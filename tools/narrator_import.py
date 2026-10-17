@@ -21,11 +21,15 @@ folder = ROOT / "assets" / "narrator"
 if len(sys.argv) < 2:
     print(__doc__)
     sys.exit(1)
-src = Path(sys.argv[1])
-nach_nummern = "--nummern" in sys.argv[2:]
+# Pfad mit Leerzeichen auch ohne Anführungszeichen annehmen: alle Teile ohne -- zusammensetzen
+src = Path(" ".join(a for a in sys.argv[1:] if not a.startswith("--")))
+nach_nummern = "--nummern" in sys.argv[1:]
+if not src.is_dir():
+    print("Ordner nicht gefunden:", src)
+    sys.exit(1)
 ids = {line_id for lines in Narrator(folder).all_lines().values() for line_id, _ in lines}
 order = []
-listing = folder / ("funfacts.txt" if "--funfacts" in sys.argv[2:] else "vertonung.txt")
+listing = folder / ("funfacts.txt" if "--funfacts" in sys.argv[1:] else "vertonung.txt")
 if listing.exists():
     order = [line.split("\t", 1)[0] for line in listing.read_text(encoding="utf-8").splitlines() if "\t" in line]
 
@@ -50,5 +54,7 @@ for f in sorted(src.glob("*")):
     shutil.copy2(f, target)
     done += 1
 print(f"{done} übernommen, {skipped} waren schon da.")
+if not done and not skipped and not unknown:
+    print("In diesem Ordner liegen keine Audiodateien (mp3, ogg, wav, m4a, opus). Richtiger Ordner?")
 if unknown:
     print("Nicht zuordenbar:", ", ".join(unknown[:20]))
