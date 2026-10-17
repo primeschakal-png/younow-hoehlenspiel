@@ -15,3 +15,6 @@ logs/
 # Betriebssystem
 .DS_Store
 Thumbs.db
+
+# Erzeugte Listen zum Vertonen
+assets/narrator/vertonung*.txt

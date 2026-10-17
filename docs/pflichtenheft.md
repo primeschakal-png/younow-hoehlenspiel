@@ -218,3 +218,11 @@ Im Lager zoomt die Karte nach IDLE_ZOOM_MINUTES heraus: ganze Stadt ohne Nebel, 
 Figuren größer gezeichnet, Bewohner reden dann auch untereinander. Chat oder Ende des Lagers holen die Kamera zurück.
 Eigene Bewohner-Sprites: `assets/characters/bewohner1.png`, `bewohner2.png` ... (LPC-Format wie hero.png), bis dahin
 eingefärbte Varianten der Figur.
+
+## Erzähler
+
+Vorbereitete Sprüche je Anlass (`assets/narrator/narrator.json`, 28 Kategorien), Auswahl zufällig ohne baldige
+Wiederholung, Platzhalter für Namen. Anzeige als Untertitel oben, optional mit Stimme aus `assets/narrator/audio/<ID>`,
+Musik wird währenddessen abgesenkt. Dosierung: Mindestabstand (NARRATOR_COOLDOWN), Häufigkeit bei kleinen Anlässen
+(NARRATOR_CHANCE), eigene Mindestabstände für häufige Anlässe wie Sackgasse und Im-Kreis-Laufen. Tod, neue Figur,
+neues Gebiet, Tageszeit und fast tot kommen immer. Kein LLM nötig.

@@ -205,3 +205,31 @@ html, body {
   border: 1px solid #6b5b3e;
   border-radius: 6px;
 }
+
+/* Erzähler: Untertitel oben unter der Meldungszeile, bewusst anders als die Sprechblasen */
+#narrator {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 640px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.8s;
+  pointer-events: none;
+}
+#narrator.show { opacity: 1; }
+#narrator-text {
+  display: inline-block;
+  padding: 6px 14px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-size: 18px;
+  line-height: 1.35;
+  color: #e8d9b0;
+  background: rgba(10, 8, 14, 0.72);
+  border-left: 3px solid #b08a4a;
+  border-right: 3px solid #b08a4a;
+  border-radius: 4px;
+  text-shadow: 0 1px 2px #000;
+}

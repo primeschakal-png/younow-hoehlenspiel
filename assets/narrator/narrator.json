@@ -1,0 +1,188 @@
+{
+  "_info": "Erzählersprüche je Anlass. Sprüche ohne {Platzhalter} können vertont werden: Audiodatei mit der ID als Namen nach audio/ legen (z. B. audio/kampf_sieg_03.mp3). Platzhalter: {held} {monster} {ebene} {gebiet} {zuschauer} {bewohner}",
+  "stadt_betreten": [
+    "Die Magierstadt. Verlassen, verwinkelt und vermutlich beleidigt, dass keiner mehr aufräumt.",
+    "Willkommen in einer Stadt, in der selbst die Ratten Umzugspläne haben.",
+    "Die Gassen hier sind so verschlungen, dass sich schon Magier darin verlaufen haben. Dauerhaft.",
+    "Einst lebten hier die mächtigsten Zauberer des Landes. Jetzt lebt hier {held}. Ein gewisser Abstieg.",
+    "Die Stadt schläft. Sie schnarcht nur gelegentlich in Form von Monstern.",
+    "Irgendwo in diesen Gassen liegt der Weg nach unten. Und irgendwo liegt der Weg ins Unglück. Oft ist es derselbe.",
+    "Ein neuer Morgen in der Magierstadt. Die Brunnen plätschern, die Fallen warten geduldig.",
+    "Hier beginnt die Geschichte. Ob sie lang wird, entscheidet ab jetzt im Wesentlichen der Zufall."
+  ],
+  "keller_betreten": [
+    "Die Keller unter der Stadt. Feucht, dunkel und erstaunlich gut besucht von Dingen mit Zähnen.",
+    "Hier unten lagerten die Magier ihre Vorräte. Und ihre Fehler.",
+    "Es riecht nach Moder, altem Wein und schlechten Entscheidungen.",
+    "Ab hier gibt es kein Tageslicht mehr. Nur noch die Frage, wie lange die Vorräte reichen.",
+    "{held} steigt in die Keller hinab. Mutig. Oder schlicht schlecht informiert.",
+    "Willkommen im Keller. Bitte die Füße abtreten. Und auf die Spinnen achten."
+  ],
+  "katakomben_betreten": [
+    "Die Katakomben. Hier ruhen die Toten. Die meisten jedenfalls.",
+    "Zwischen Särgen und Knochen wird jeder Schritt zu einer höflichen Bitte um Verzeihung.",
+    "Hier unten ist es so still, dass man das eigene Herz für einen Verfolger hält.",
+    "Die Katakomben haben schon viele Abenteurer aufgenommen. Wieder hinaus kamen deutlich weniger.",
+    "Ebene {ebene}. Die Wände sind voller Nischen. Und die Nischen sind nicht leer."
+  ],
+  "hoehle_betreten": [
+    "Die Höhlen. Älter als die Stadt, älter als die Magier und definitiv schlechter gelaunt.",
+    "Hier unten hat noch nie jemand eine Karte gezeichnet. Wer es versucht hat, ist Teil der Höhle geworden.",
+    "Tiefer geht es kaum. Sagen jedenfalls alle, bevor sie die nächste Treppe finden.",
+    "Die Dunkelheit hier unten hat Gewicht. Man trägt sie bei jedem Schritt mit.",
+    "Ebene {ebene}. Wer so weit gekommen ist, hat entweder Glück oder einen sehr guten Chat."
+  ],
+  "tiefer": [
+    "Und wieder eine Treppe nach unten. Die Treppen in dieser Stadt kennen offenbar nur eine Richtung.",
+    "Tiefer. Immer tiefer. Als wäre oben nicht schon genug schiefgegangen.",
+    "Ebene {ebene}. Das Licht wird weniger, die Monster werden mehr. Eine klassische Entwicklung.",
+    "Ein Abstieg. Für die Geschichte ein Aufstieg.",
+    "Die Treppe knarrt. Sie hat schon viele hinuntergehen sehen und nur wenige hinauf."
+  ],
+  "kampf_sieg": [
+    "Ein Sieg. Gegen alle Wahrscheinlichkeit und gegen jedes Lehrbuch der Fechtkunst.",
+    "Der Gegner liegt am Boden. Er hat seine Lebensentscheidungen vermutlich schon bereut.",
+    "Das war knapp. Also, für den Gegner.",
+    "{held} gewinnt gegen {monster}. Die Würfel waren heute gnädig.",
+    "Ein sauberer Treffer. Fast so, als hätte es jemand geplant.",
+    "Wieder ein Gegner weniger. Die Stadt dankt es mit eisigem Schweigen.",
+    "{monster} hat verloren. Es wird zu Hause eine Geschichte erzählen. Eine stark geschönte.",
+    "Sieg. Die Zuschauer jubeln. Vermutlich. Man hört sie hier unten so schlecht."
+  ],
+  "kampf_niederlage": [
+    "Das war nicht der Plan. Es gab allerdings auch keinen.",
+    "Autsch. Das hinterlässt einen Eindruck. Mehrere, um genau zu sein.",
+    "{monster} gewinnt diese Runde und verschwindet zufrieden in der Dunkelheit.",
+    "Ein Treffer. Nicht von der guten Sorte.",
+    "Manchmal gewinnt man, manchmal verliert man. Heute hat {held} vor allem Blut verloren.",
+    "Die Würfel haben gesprochen. Und sie waren unhöflich.",
+    "Ein schmerzhafter Moment der Selbsterkenntnis."
+  ],
+  "falle_ausgewichen": [
+    "Die Falle schnappt zu. Ins Leere. Die Falle ist sichtlich enttäuscht.",
+    "Ein Sprung im letzten Moment. Elegant ist anders, wirksam ist es trotzdem.",
+    "Reflexe wie eine Katze. Eine müde Katze, aber immerhin.",
+    "Die Fallen dieser Stadt wurden von Meistern gebaut. Ausgetrickst von einem Amateur."
+  ],
+  "falle_getroffen": [
+    "Eine Falle. Wer hätte das ahnen können. Außer allen, die den Hinweis gelesen haben.",
+    "Der Boden war nicht ganz so solide, wie er aussah.",
+    "Die Falle hat ihren Zweck erfüllt. Mit großer Hingabe.",
+    "Ein klassischer Fehltritt. Die Magier hätten applaudiert.",
+    "Merke: Wenn es im Gang komisch klickt, ist es selten Applaus."
+  ],
+  "truhe": [
+    "Eine Truhe. Das Schönste an Truhen ist, dass sie nie fragen, wem sie gehören.",
+    "Fundsachen. Der Vorbesitzer wird sie vermutlich nicht mehr brauchen.",
+    "Die Truhe knarrt auf. Kein Monster drin. Ein seltener Glücksfall.",
+    "Beute. Das Wort allein macht schon gute Laune.",
+    "Gold, Brot, vielleicht ein Trank. Das Abenteurerleben hat auch seine sonnigen Seiten."
+  ],
+  "brunnen": [
+    "Wasser. Das unterschätzteste Wunder dieser Stadt.",
+    "Ein Brunnen. Die Magier haben vieles hinterlassen, aber das hier ist das Beste davon.",
+    "Erfrischung. Und für einen Moment vergisst man, dass irgendwo etwas Hungriges lauert."
+  ],
+  "fast_tot": [
+    "Die Lage ist ernst. Sehr ernst. Jetzt wäre ein guter Moment für einen weisen Ratschlag aus dem Chat.",
+    "Noch ein Treffer und diese Geschichte bekommt ein Ende. Kein schönes.",
+    "Das Leben hängt an einem Faden. Und der Faden ist schon ziemlich ausgefranst.",
+    "Ab jetzt zählt jeder Schritt. Und jede Abstimmung.",
+    "Wer jetzt noch auf Monster trifft, braucht mehr als Glück. Er braucht ein Wunder. Oder einen Heiltrank."
+  ],
+  "tod": [
+    "Und so endet die Geschichte von {held}. Nicht mit einem Knall, sondern mit einem kleinen, traurigen Plopp.",
+    "Ein Held ist gefallen. Die Stadt nimmt es gelassen. Sie hat schon viele fallen sehen.",
+    "Das war es. Die Ehrenhalle hat einen neuen Eintrag.",
+    "Gestorben. Aber mit Stil. Na gut, ohne Stil. Aber gestorben.",
+    "{held} ist nicht mehr. Man wird sich an ihn erinnern. Zumindest bis zum nächsten.",
+    "Ruhe in Frieden. Die Monster werden dich vermissen. Du warst so leicht zu treffen."
+  ],
+  "neue_figur": [
+    "Ein neuer Abenteurer betritt die Stadt. Er hat die Geschichten gehört. Er hat ihnen nicht geglaubt.",
+    "Und schon steht der Nächste bereit. Der Nachschub an Mutigen scheint unerschöpflich.",
+    "Ein frisches Gesicht. Voller Hoffnung. Das wird sich geben.",
+    "Willkommen, {held}. Deine Vorgänger lassen grüßen. Aus der Ehrenhalle.",
+    "Eine neue Geschichte beginnt. Gleiche Stadt, gleiche Monster, neues Opfer."
+  ],
+  "lager": [
+    "Zeit für eine Rast. Selbst Helden brauchen gelegentlich ein Nickerchen.",
+    "Ein kleines Feuer, ein ruhiger Moment. Die Stadt hält kurz den Atem an.",
+    "Niemand schaut zu. Also wird das Lager aufgeschlagen. Abenteuer ohne Publikum lohnen sich nicht.",
+    "Das Feuer knistert. Es ist der einzige, der hier gerade etwas zu sagen hat.",
+    "Eine Pause. In dieser Stadt die gefährlichste Tätigkeit überhaupt. Man könnte sich an sie gewöhnen."
+  ],
+  "lager_ende": [
+    "Genug gerastet. Die Stadt wartet nicht. Sie lauert.",
+    "Die Glut erlischt, die Reise geht weiter.",
+    "Aufbruch. Ausgeruht, satt und vermutlich wieder zu optimistisch."
+  ],
+  "nacht": [
+    "Die Nacht senkt sich über die Stadt. Jetzt kommen die Dinge heraus, die das Tageslicht nicht mögen.",
+    "Es wird dunkel. In der Magierstadt ist das eher eine Drohung als eine Tageszeit.",
+    "Nacht. Die Bewohner verschwinden in ihren Häusern. Sie wissen warum."
+  ],
+  "morgen": [
+    "Ein neuer Tag bricht an. Die Monster gehen schlafen. Die meisten.",
+    "Die Sonne geht auf. Sie sieht, was die Nacht übrig gelassen hat, und schweigt diplomatisch.",
+    "Morgen in der Magierstadt. Zeit, die Fehler von gestern bei Tageslicht zu wiederholen."
+  ],
+  "sackgasse": [
+    "Eine Sackgasse. Die Architekten dieser Stadt hatten einen ausgeprägten Sinn für Humor.",
+    "Hier geht es nicht weiter. Das hätte man auch früher sagen können.",
+    "Eine Mauer. Sehr massiv, sehr endgültig, sehr unbeeindruckt.",
+    "Umkehren. Das zweitbeliebteste Hobby aller Abenteurer.",
+    "Eine Sackgasse. Aber eine mit schöner Aussicht. Auf eine Wand."
+  ],
+  "im_kreis": [
+    "Diese Kreuzung kommt uns bekannt vor. Sehr bekannt. Verdächtig bekannt.",
+    "Waren wir hier nicht schon? Mehrmals? Die Pflastersteine grüßen bereits.",
+    "Man könnte meinen, jemand dreht sich im Kreis. Aber das wäre natürlich unhöflich.",
+    "Die Stadt ist groß. Dieser Teil davon wird allerdings langsam zur Heimat."
+  ],
+  "bestechung": [
+    "Ah, Bestechung. Die älteste Form der Demokratie.",
+    "Geld spricht. Und es spricht gerade ziemlich laut.",
+    "{zuschauer} hat tief in die Tasche gegriffen. Die Richtung ist damit verhandelbar.",
+    "Ein großzügiges Geschenk. Rein zufällig kurz vor der Abstimmung.",
+    "Wer zahlt, bestimmt die Route. So war es schon immer, auch in den besten Zauberschulen."
+  ],
+  "erster_zuschauer": [
+    "Ah, Publikum. Endlich jemand, der die Heldentaten bezeugen kann.",
+    "Jemand schaut zu. Das ändert alles. Vor allem die Haltung.",
+    "{zuschauer} ist da. Die Stadt erwacht aus ihrem Mittagsschlaf.",
+    "Ein Zuschauer. Ab jetzt wird nicht mehr in der Nase gebohrt."
+  ],
+  "chat_schlecht": [
+    "Der Chat hat entschieden. Der Chat wird sich auch an die Folgen erinnern müssen.",
+    "Demokratie ist großartig. Meistens.",
+    "Eine Mehrheitsentscheidung. Mit den entsprechenden Konsequenzen.",
+    "Merke: Nur weil alle in dieselbe Richtung zeigen, ist es noch keine gute Richtung."
+  ],
+  "archetyp_wechsel": [
+    "Etwas hat sich verändert. Im Blick, in der Haltung, in der Art zu laufen.",
+    "Die Erlebnisse hinterlassen Spuren. {held} ist jetzt {archetyp}.",
+    "Man wird nicht als {archetyp} geboren. Man wird dazu gemacht. Meistens vom Chat."
+  ],
+  "gespraech": [
+    "Eine Begegnung. In dieser Stadt fast so selten wie ein ehrlicher Händler.",
+    "Ein Gespräch unter Fremden. Mal sehen, wer hier wem etwas verkaufen will.",
+    "{bewohner} hat Zeit für einen Plausch. Das hat in dieser Stadt sonst niemand.",
+    "Smalltalk zwischen Ruinen. Die Magierstadt ist eben ein geselliger Ort."
+  ],
+  "stille": [
+    "Stille. Nur das ferne Tropfen von Wasser und das leise Knurren eines Magens.",
+    "Es passiert gerade nichts. Genießen wir es, das ist hier selten.",
+    "Der Chat schweigt. Vielleicht denkt er nach. Vielleicht schläft er.",
+    "Kein Laut in den Gassen. Die Stadt wartet. Worauf, weiß sie selbst nicht.",
+    "Falls jemand zuschaut: Ein einfaches !links würde hier Wunder wirken."
+  ],
+  "gemuese": [
+    "Gemüse am Wegesrand. Für einen Abenteurer schon fast ein Festmahl.",
+    "Etwas Essbares. Oder etwas, das so aussieht. Der Unterschied zeigt sich später."
+  ],
+  "statue": [
+    "Eine alte Statue erwacht für einen Moment. Die Magier haben ihren Besuchern offenbar Gutes gewünscht.",
+    "Magie liegt in der Luft. Heilende Magie, zur Abwechslung."
+  ]
+}

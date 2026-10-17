@@ -12,6 +12,8 @@ from datetime import datetime
 
 import entities as ent_mod
 import townsfolk
+from narrator import Narrator
+from pathlib import Path
 from character import Character
 from hero import Hero
 from maze import BACK, LEFT, RIGHT, STEP, Maze
@@ -132,6 +134,15 @@ class Game:
         self.last_npc_talk = -1e9
         self.overview = False
         self.speech = []                   # geplante Sprechzeilen: (zeit, nachricht)
+        # Erzähler
+        self.narrator = Narrator(Path(__file__).resolve().parent.parent / "assets" / "narrator")
+        self.narr_enabled = True
+        self.narr_cooldown = 45            # Sekunden zwischen zwei normalen Sprüchen
+        self.narr_chance = 0.5             # Wahrscheinlichkeit bei häufigen Anlässen
+        self.last_narr = -1e9
+        self.last_narr_kind = {}
+        self.last_daypart = None
+        self.visit_count = {}
         self.cells_w = cells_w
         self.cells_h = cells_h
         self.reveal_radius = reveal_radius
@@ -284,12 +295,15 @@ class Game:
     def _archetype_changed(self, changed):
         if changed:
             self.log(f"{self.hero.name} ist jetzt ein {self.character.label()}.")
+            self.narrate("archetyp_wechsel", archetyp=self.character.label())
             self.emit_character(force=True)
             self.comment(f"Du merkst, dass du dich verändert hast: Du bist jetzt ein {self.character.label()}.", prio=2)
         else:
             self.emit_character()
 
     def outcome(self, value):
+        if value <= -0.8 and self.last_decision and self.last_decision.get("source") == "chat":
+            self.narrate("chat_schlecht")
         self._archetype_changed(self.character.outcome(value, self.last_decision))
 
     def courage(self, delta):
@@ -323,13 +337,17 @@ class Game:
             count = self.npc_count_night if self._night() else self.npc_count_day
             avoid = {self.maze.start, self.maze.stairs}
             self.npcs = townsfolk.spawn(self.maze, count, avoid, random.Random(seed + 2), self.npc_sprite_count)
-        self.visited = {self.cell}      # Gedächtnis: Kreuzungen dieser Ebene, an denen die Figur schon war
+        self.visited = {self.cell}
+        self.visit_count = {}      # Gedächtnis: Kreuzungen dieser Ebene, an denen die Figur schon war
         self._reveal_around(self.pos, emit=False)
         self.emit(self.full_state())
         area = area_for(self.depth)
         if self.depth > 1 and area["key"] != area_for(self.depth - 1)["key"]:
             self.log(f"{self.hero.name} steigt hinab: {area['name']}!")
             self.comment(f"Du bist hinabgestiegen und jetzt {area['where']}.")
+            self.narrate(area["key"] + "_betreten", important=True)
+        elif self.depth > 1:
+            self.narrate("tiefer")
         else:
             self.log(f"{self.hero.name} betritt Ebene {self.depth}.")
 
@@ -346,6 +364,45 @@ class Game:
         if 20 <= h < 22:
             return "Es wird dunkel."
         return "Es ist Nacht und dunkel in den Gassen."
+
+    # ---------- Erzähler ----------
+
+    # Anlässe, die sonst zu oft kämen: höchstens alle x Sekunden
+    NARR_KIND_GAP = {"im_kreis": 900, "sackgasse": 300, "brunnen": 600, "stille": 600, "lager": 300,
+                     "lager_ende": 300, "gemuese": 300, "gespraech": 300}
+
+    def narrate(self, kind, important=False, **values):
+        if not self.narr_enabled:
+            return
+        now = time.monotonic()
+        if now - self.last_narr_kind.get(kind, -1e9) < self.NARR_KIND_GAP.get(kind, 0):
+            return
+        if not important:
+            if now - self.last_narr < self.narr_cooldown or self.rnd.random() > self.narr_chance:
+                return
+        elif now - self.last_narr < 4:
+            return            # zwei wichtige Sprüche nicht direkt übereinander
+        values.setdefault("held", self.hero.name)
+        values.setdefault("ebene", self.depth)
+        values.setdefault("gebiet", area_for(self.depth)["name"])
+        line = self.narrator.pick(kind, **values)
+        if not line:
+            return
+        self.last_narr = now
+        self.last_narr_kind[kind] = now
+        self.emit({"type": "narrator", **line})
+
+    def _narr_daytime(self, now):
+        """Abend und Morgen in der Stadt ansagen, Stille im Leerlauf füllen."""
+        if self.underground() or self.state == "dead":
+            return
+        hour = datetime.now().hour
+        part = "nacht" if hour >= 21 or hour < 6 else "tag"
+        if self.last_daypart and part != self.last_daypart:
+            self.narrate("nacht" if part == "nacht" else "morgen", important=True)
+        self.last_daypart = part
+        if self.idle() and self.state not in ("camp",) and now - self.last_narr > 300:
+            self.narrate("stille")
 
     # ---------- Stadtbewohner ----------
 
@@ -406,6 +463,7 @@ class Game:
                               f"gerade ein {c.label()}")
         msgs = townsfolk.dialog_messages(me, (n.name, f"{n.job}, {n.quirk}"), topic, hint, deep, self.situation())
         self.request_llm_raw("dialog", msgs, 2, talk=id(self.talk))
+        self.narrate("gespraech", bewohner=n.name)
         return True
 
     def _start_npc_talk(self, a, b, now):
@@ -485,6 +543,7 @@ class Game:
         self.new_level()
         c = self.character
         self.log(f"Ein neuer Abenteurer steigt hinab: {self.hero.name}, {c.klass} {c.origin}, {c.traits[0]} und {c.traits[1]}.")
+        self.narrate("neue_figur", important=True)
 
     def die(self, cause):
         self.hero.hp = 0
@@ -499,6 +558,7 @@ class Game:
         self.resume_at = time.monotonic() + BAL["death_pause"]
         self.emit_stats()
         self.emit({"type": "death", **entry, "hall": self.hall[-5:]})
+        self.narrate("tod", important=True)
 
     # ---------- Zustand ----------
 
@@ -606,6 +666,8 @@ class Game:
             return
         self.emit_stats()
         if self.hero.hp <= 4:
+            if not self.character.near_death_noted:
+                self.narrate("fast_tot", important=True)
             if self.character.near_death():
                 self._archetype_changed(True)
             else:
@@ -656,6 +718,7 @@ class Game:
                 self.character.recovered()
         self._speech_tick(now)
         self._npc_tick(now)
+        self._narr_daytime(now)
         if self.state == "dead":
             if now >= self.resume_at:
                 self.new_hero()
@@ -713,6 +776,9 @@ class Game:
 
     def _arrive(self):
         self.visited.add(self.cell)
+        self.visit_count[self.cell] = self.visit_count.get(self.cell, 0) + 1
+        if self.visit_count[self.cell] == 4:
+            self.narrate("im_kreis")
         if self._try_hero_talk(walking=True):
             return
         e = self.entities.get(self.cell)
@@ -746,6 +812,7 @@ class Game:
         forward = [d for d in exits if d != back]
         if not forward:
             self.log("Sackgasse. Zurück.")
+            self.narrate("sackgasse")
             self.outcome(-0.25)
             self._go(back)
         elif len(forward) == 1:
@@ -770,6 +837,7 @@ class Game:
         kind = e["kind"]
         cell = e["cell"]
         if kind == "spring":
+            self.narrate("brunnen")
             self.outcome(0.8 if h.thirst < 60 or h.water == 0 else 0.2)
             h.thirst = 100.0
             h.water = h.max_water
@@ -779,6 +847,7 @@ class Game:
 
         if kind == "chest":
             self.remove_entity(cell)
+            self.narrate("truhe")
             loot = self._chest_loot()
             self.outcome(0.6)
             self.log(f"{h.name} öffnet eine alte Truhe: {loot}.")
@@ -790,6 +859,7 @@ class Game:
 
         if kind == "mushroom":
             self.remove_entity(cell)
+            self.narrate("gemuese")
             if self.rnd.random() < 0.7:
                 h.hunger = min(100.0, h.hunger + BAL["mushroom_value"])
                 if self.underground():
@@ -810,6 +880,7 @@ class Game:
 
         if kind == "shrine":
             self.remove_entity(cell)
+            self.narrate("statue", important=True)
             self.outcome(1.0 if h.hp < h.max_hp * 0.6 else 0.4)
             h.hp = h.max_hp
             self.log(f"Eine alte Statue leuchtet auf. {h.name} fühlt sich wie neu geboren.")
@@ -826,11 +897,13 @@ class Game:
             target = 10 + self.depth // 2
             if self.dice("Falle! Ausweichen", target):
                 self.log(f"Eine Falle schnappt zu, aber {h.name} springt rechtzeitig weg.")
+                self.narrate("falle_ausgewichen")
                 self.outcome(-0.2)
                 self.courage(0.02)
             else:
                 dmg = self.rnd.randint(1, 4) + self.depth // 2
                 self.log(f"Eine Falle! {h.name} verliert {dmg} Lebenspunkte.")
+                self.narrate("falle_getroffen")
                 self.comment(f"Du bist in eine Falle getreten und hast {dmg} Lebenspunkte verloren.")
                 self.outcome(-0.8)
                 self.courage(-0.08)
@@ -860,6 +933,7 @@ class Game:
                 self.log(f"{h.name} besiegt: {name}{loot}.")
                 self.comment(f"Du hast im Kampf gegen {name} gewonnen.")
                 self.outcome(0.4)
+                self.narrate("kampf_sieg", monster=name)
                 self.courage(0.08)
                 self.emit_stats()
             else:
@@ -868,6 +942,7 @@ class Game:
                 self.comment(f"Der Gegner {name} hat dich verletzt ({dmg} Schaden) und ist geflohen.")
                 self.outcome(-0.8)
                 self.courage(-0.1)
+                self.narrate("kampf_niederlage", monster=name)
                 self.damage(dmg, f"von {name} getötet")
             if self.state != "dead":
                 self.pause(BAL["event_pause"])
@@ -921,6 +996,7 @@ class Game:
         self.camp = {"text": "macht ein Feuer", "next": time.monotonic() + 8, "ticks": 0,
                      "since": time.monotonic()}
         self.log(f"Niemand da. {self.hero.name} schlägt ein Lager auf.")
+        self.narrate("lager")
         self.emit({"type": "camp", **self._camp_info()})
 
     def _leave_camp(self, reason):
@@ -957,6 +1033,7 @@ class Game:
 
         if now - self.camp["since"] >= self.camp_max_seconds:
             self._leave_camp(f"{h.name} hat genug gerastet und zieht weiter.")
+            self.narrate("lager_ende")
             self.comment("Du hast lange genug allein am Feuer gesessen und ziehst weiter, "
                          "vielleicht schaut ja bald jemand zu.")
             return
@@ -1152,6 +1229,8 @@ class Game:
         text = (text or "").strip()[:200]
         if not text:
             return
+        if self.idle():
+            self.narrate("erster_zuschauer", zuschauer=user)
         self.last_chat = time.monotonic()
         self.emit({"type": "chat", "user": user, "text": text})
         self._archetype_changed(self.character.on_chat(user))
@@ -1188,6 +1267,7 @@ class Game:
         self._archetype_changed(c.on_chat(user))
         if self.state == "camp":
             self._leave_camp(f"Ein Geschenk! {self.hero.name} springt auf.")
+        self.narrate("bestechung", zuschauer=user)
         if self.state == "voting" and user in self.vote["votes"]:
             self._announce_bribe(user, self.vote["votes"][user])
             self.emit({"type": "vote_update", "counts": self._counts()})

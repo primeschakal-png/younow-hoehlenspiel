@@ -126,6 +126,7 @@
       <button data-action="new_level">Neue Ebene erzeugen</button>
       <button data-action="new_hero">Neue Figur</button>
       <button data-action="sound_test">Ton testen</button>
+      <button data-action="narrator_test">Erzähler testen</button>
     </div>
   </header>
   <main>
@@ -326,7 +327,7 @@ async function action(name, button) {
       body: JSON.stringify({ action: name }),
     });
     const data = await r.json();
-    if (name === "llm_test" || name === "sound_test") msg(data.text, data.ok ? "ok" : "bad");
+    if (name === "llm_test" || name === "sound_test" || name === "narrator_test") msg(data.text, data.ok ? "ok" : "bad");
     else msg(name === "new_level" ? "Neue Ebene erzeugt." : "Neue Figur ist unterwegs.", "ok");
   } catch (e) {
     msg("Fehler: " + e.message, "bad");

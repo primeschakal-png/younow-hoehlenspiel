@@ -9,6 +9,7 @@ Einstellungen: http://localhost:8000/einstellungen
 
 import asyncio
 import json
+import random
 import sys
 import time
 from pathlib import Path
@@ -227,6 +228,18 @@ async def settings_action(request):
         game.new_level()
     elif action == "new_hero":
         game.new_hero()
+    elif action == "narrator_test":
+        kinds = [k for k in game.narrator.all_lines()]
+        if not kinds:
+            return web.json_response({"ok": False, "text": "Keine Sprüche gefunden (assets/narrator/narrator.json)."})
+        game.last_narr = -1e9
+        was = game.narr_enabled
+        game.narr_enabled = True
+        game.narrate(random.choice(kinds), important=True, zuschauer="Testzuschauer", monster="Ratte",
+                     bewohner="Isolde", archetyp=game.character.label())
+        game.narr_enabled = was
+        await broadcast(game.flush())
+        return web.json_response({"ok": True, "text": "Ein zufälliger Erzählerspruch wurde ins Overlay geschickt."})
     elif action == "sound_test":
         game.emit({"type": "sound_test"})
         await broadcast(game.flush())

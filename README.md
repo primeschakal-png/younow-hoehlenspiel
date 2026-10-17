@@ -26,6 +26,14 @@ Ton: Musik je Gebiet und Geräusche zu den Ereignissen, alles CC0 (siehe `assets
 
 Grafik: Kacheln aus „Mage City Arcanos“ von Hyptosis (CC0), Unterwelt, Monster und Gegenstände aus „Dungeon Crawl Stone Soup“ (CC0), Spielfigur aus dem LPC-Generator (OGA-BY 3.0), siehe `assets/CREDITS.md`.
 
+## Erzähler
+
+Sprüche je Anlass stehen in `assets/narrator/narrator.json` (Tod, Kampf, neues Gebiet, Sackgasse, Bestechung ...).
+Änderungen gelten sofort. Platzhalter: `{held}`, `{monster}`, `{ebene}`, `{gebiet}`, `{zuschauer}`, `{bewohner}`, `{archetyp}`.
+Vertonen: `python tools/narrator_export.py` schreibt alle Sprüche ohne Platzhalter nach `assets/narrator/vertonung.txt`
+(ID und Text). Audiodateien mit der ID als Namen (z. B. `kampf_sieg_03.mp3`) nach `assets/narrator/audio/` legen,
+dann spricht der Erzähler sie, und die Musik wird solange leiser. Häufigkeit auf der Einstellungsseite.
+
 ## Spiel im Internet zeigen
 
 `teilen.bat` macht das laufende Spiel über einen Cloudflare-Tunnel unter einer öffentlichen Adresse

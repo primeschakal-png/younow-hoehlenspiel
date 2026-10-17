@@ -414,7 +414,7 @@ const audio = {
   },
 
   musicVolume() {
-    return this.music * (this.quiet ? 0.45 : 1);
+    return this.music * (this.quiet ? 0.45 : 1) * (this.ducked ? 0.35 : 1);
   },
 
   // Musik: je Stimmung ein Ordner unter assets/audio/music/, Stücke in zufälliger Reihenfolge
@@ -480,6 +480,30 @@ const audio = {
     this.currentMood = null;
     this.scene.tweens.killTweensOf(old);
     this.scene.tweens.add({ targets: old, volume: 0, duration: 2000, onComplete: () => old.destroy() });
+  },
+
+  // Erzählerstimme: Musik währenddessen absenken
+  voice(url, onLength) {
+    if (!this.enabled || !this.scene) return;
+    const key = "v:" + url;
+    const go = () => {
+      const snd = this.scene.sound.add(key, { volume: Math.min(1, this.sfx * 1.3 + 0.1) });
+      if (onLength) onLength(snd.duration || 0);
+      this.ducked = true;
+      if (this.current) this.scene.tweens.add({ targets: this.current, volume: this.musicVolume(), duration: 400 });
+      snd.once("complete", () => {
+        snd.destroy();
+        this.ducked = false;
+        if (this.current) this.scene.tweens.add({ targets: this.current, volume: this.musicVolume(), duration: 1200 });
+      });
+      snd.play();
+    };
+    if (this.scene.cache.audio.exists(key)) go();
+    else {
+      this.scene.load.audio(key, url);
+      this.scene.load.once("filecomplete-audio-" + key, go);
+      this.scene.load.start();
+    }
   },
 
   setQuiet(q) {
@@ -1488,6 +1512,21 @@ function renderCharacter(c) {
 
 // ---------------- Nachrichten ----------------
 
+// Erzähler: Untertitel, dazu die Stimme, falls eine Audiodatei da ist. Musik wird solange leiser.
+let narratorTimer = null;
+function showNarrator(m) {
+  const box = el("narrator");
+  el("narrator-text").textContent = m.text;
+  box.classList.add("show");
+  clearTimeout(narratorTimer);
+  let ms = Math.max(5000, Math.min(14000, m.text.length * 75));
+  if (m.audio) audio.voice(m.audio, (secs) => {
+    clearTimeout(narratorTimer);
+    narratorTimer = setTimeout(() => box.classList.remove("show"), Math.max(ms, secs * 1000 + 1200));
+  });
+  narratorTimer = setTimeout(() => box.classList.remove("show"), ms);
+}
+
 // Chat-Kasten: im Test immer, sonst nur wenn in den Einstellungen eingeschaltet
 function setChatVisible(show) {
   el("chat-lines").classList.toggle("hidden", !(show || TESTCHAT));
@@ -1525,6 +1564,9 @@ function handle(msg) {
     case "entity_remove":
       if (scene.entities.has(msg.id) && scene.entities.get(msg.id).kind === "chest") audio.play("chest");
       scene.removeEntity(msg.id);
+      break;
+    case "narrator":
+      showNarrator(msg);
       break;
     case "sound_test":
       audio.play("coins");
