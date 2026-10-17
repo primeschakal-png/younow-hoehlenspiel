@@ -19,6 +19,7 @@ from aiohttp import WSMsgType, web
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game import Game  # noqa: E402
+from narrator import FUNFACT_KINDS  # noqa: E402
 from llm import LLMClient  # noqa: E402
 import settings  # noqa: E402
 from younow import YouNowPoller  # noqa: E402
@@ -228,11 +229,21 @@ async def settings_action(request):
         game.new_level()
     elif action == "new_hero":
         game.new_hero()
+    elif action == "funfact_test":
+        game.narr_busy_until = 0.0
+        was = game.narr_enabled, game.funfact_enabled
+        game.narr_enabled = game.funfact_enabled = True
+        ok = game.funfact("Testzuschauer")
+        game.narr_enabled, game.funfact_enabled = was
+        await broadcast(game.flush())
+        return web.json_response({"ok": ok, "text": "Ein zufälliger Fun Fact wurde ins Overlay geschickt." if ok
+                                  else "Keine Fun Facts gefunden (assets/narrator/funfacts.json)."})
     elif action == "narrator_test":
-        kinds = [k for k in game.narrator.all_lines()]
+        kinds = [k for k in game.narrator.all_lines() if k not in FUNFACT_KINDS]
         if not kinds:
             return web.json_response({"ok": False, "text": "Keine Sprüche gefunden (assets/narrator/narrator.json)."})
         game.last_narr = -1e9
+        game.narr_busy_until = 0.0
         was = game.narr_enabled
         game.narr_enabled = True
         game.narrate(random.choice(kinds), important=True, zuschauer="Testzuschauer", monster="Ratte",

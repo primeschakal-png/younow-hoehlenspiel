@@ -18,7 +18,7 @@ Ohne Chat wird die Abstimmungszeit nach einer Minute Stille stetig kürzer, bis 
 
 YouNow: Auf der Einstellungsseite unter „YouNow“ einschalten und den Namen des Streams eintragen. Der Server liest dann alle paar Sekunden die öffentliche Stream-Info von YouNow: Chat und Befehle gehen direkt ins Spiel, Geschenke werden zu Zusatzstimmen bei der Abstimmung (Bestechung). Ein Browser oder Userscript ist dafür nicht nötig.
 
-Zuschauer können die Figur mit `!sag <Text>` ansprechen (pro Zuschauer höchstens alle 30 Sekunden).
+Zuschauer können die Figur mit `!sag <Text>` ansprechen (pro Zuschauer höchstens alle 30 Sekunden). Mit `!fakt` erzählt die Erzählerin einen Fun Fact (für alle zusammen höchstens alle 90 Sekunden, einstellbar).
 
 Für OBS: Browserquelle mit `http://localhost:8000/`, Größe 1280 x 720 (ohne Test-Chat). Die Grafik wird doppelt vergrößert, mit `?zoom=1` oder `?zoom=3` an der Adresse lässt sich das ändern. In der Stadt folgt das Licht der Uhrzeit des PCs (Abendrot, Nacht mit Lichtkreis um die Figur), zum Ausprobieren `?stunde=22` an die Adresse hängen.
 

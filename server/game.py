@@ -82,6 +82,7 @@ def de_num(x):
 
 
 SAY_COOLDOWN = 30          # Sekunden zwischen zwei !sag-Antworten an denselben Zuschauer
+FACT_COMMANDS = ("!fakt", "!fact", "!funfact")
 LLM_STALE = 20             # Kommentare, die so lange warten, sind nicht mehr aktuell
 
 
@@ -141,6 +142,14 @@ class Game:
         self.narr_chance = 0.5             # Wahrscheinlichkeit bei häufigen Anlässen
         self.last_narr = -1e9
         self.last_narr_kind = {}
+        self.narr_busy_until = 0.0         # bis dahin spricht der Erzähler noch (geschätzt)
+        # Fun Facts der Erzählerin
+        self.funfact_enabled = True
+        self.funfact_gap = 8 * 60          # Sekunden zwischen zufälligen Fun Facts in ruhigen Momenten
+        self.funfact_cmd_gap = 90          # Sperre für !fakt, für alle Zuschauer zusammen
+        self.last_funfact = time.monotonic()
+        self.last_funfact_cmd = -1e9
+        self.last_fact_hint = -1e9
         self.last_daypart = None
         self.visit_count = {}
         self.cells_w = cells_w
@@ -371,10 +380,16 @@ class Game:
     NARR_KIND_GAP = {"im_kreis": 900, "sackgasse": 300, "brunnen": 600, "stille": 600, "lager": 300,
                      "lager_ende": 300, "gemuese": 300, "gespraech": 300}
 
+    @staticmethod
+    def _speech_seconds(text):
+        return len(text.split()) / 2.4 + 1.5
+
     def narrate(self, kind, important=False, **values):
         if not self.narr_enabled:
             return
         now = time.monotonic()
+        if now < self.narr_busy_until:
+            return            # nicht in einen laufenden Spruch hineinreden
         if now - self.last_narr_kind.get(kind, -1e9) < self.NARR_KIND_GAP.get(kind, 0):
             return
         if not important:
@@ -390,7 +405,47 @@ class Game:
             return
         self.last_narr = now
         self.last_narr_kind[kind] = now
+        self.narr_busy_until = now + self._speech_seconds(line["text"])
         self.emit({"type": "narrator", **line})
+
+    def funfact(self, user=None):
+        """Ein Fun Fact der Erzählerin. user: wer ihn mit !fakt angefordert hat (steht nur im Overlay)."""
+        if not (self.narr_enabled and self.funfact_enabled):
+            return False
+        now = time.monotonic()
+        if now < self.narr_busy_until:
+            return False
+        line = self.narrator.pick("funfact")
+        if not line:
+            return False
+        self.last_narr = now
+        self.last_funfact = now
+        self.narr_busy_until = now + self._speech_seconds(line["text"])
+        self.emit({"type": "narrator", **line, **({"for": user} if user else {})})
+        return True
+
+    def _funfact_tick(self, now):
+        """Zufällig in ruhigen Momenten: im Lager oder wenn der Chat still ist."""
+        if self.state == "dead" or not (self.state == "camp" or self.idle()):
+            return
+        if now - self.last_funfact < self.funfact_gap or now - self.last_narr < 20:
+            return
+        self.funfact()
+
+    def _fact_command(self, user):
+        now = time.monotonic()
+        if not (self.narr_enabled and self.funfact_enabled):
+            return
+        wait = self.funfact_cmd_gap - (now - self.last_funfact_cmd)
+        busy = now < self.narr_busy_until
+        if wait > 0 or busy:
+            if now - self.last_fact_hint > 10:      # Hinweis nicht bei jedem !fakt wiederholen
+                self.last_fact_hint = now
+                self.log("Die Erzählerin redet gerade, gleich nochmal versuchen." if busy and wait <= 0
+                         else f"Die Erzählerin braucht eine Pause. Nächster Fakt in {int(wait) + 1} Sekunden.")
+            return
+        if self.funfact(user):
+            self.last_funfact_cmd = now
 
     def _narr_daytime(self, now):
         """Abend und Morgen in der Stadt ansagen, Stille im Leerlauf füllen."""
@@ -719,6 +774,7 @@ class Game:
         self._speech_tick(now)
         self._npc_tick(now)
         self._narr_daytime(now)
+        self._funfact_tick(now)
         if self.state == "dead":
             if now >= self.resume_at:
                 self.new_hero()
@@ -1229,11 +1285,15 @@ class Game:
         text = (text or "").strip()[:200]
         if not text:
             return
-        if self.idle():
+        is_fact = text.split()[0].lower() in FACT_COMMANDS
+        if self.idle() and not is_fact:
             self.narrate("erster_zuschauer", zuschauer=user)
         self.last_chat = time.monotonic()
         self.emit({"type": "chat", "user": user, "text": text})
         self._archetype_changed(self.character.on_chat(user))
+        if is_fact:
+            self._fact_command(user)
+            return
         if text.lower().startswith("!sag ") and self.state != "dead":
             self._viewer_says(user, text[5:].strip())
         if self.state == "camp":

@@ -50,6 +50,13 @@ FIELDS = [
      "Zwischen zwei Sprüchen. Tod, neue Figur, neues Gebiet und Tageszeit kommen trotzdem immer.", True),
     ("NARRATOR_CHANCE", "erzaehler", "int", "Häufigkeit bei kleinen Anlässen (Prozent)",
      "Kampf, Truhe, Sackgasse und Ähnliches: so oft meldet sich der Erzähler, wenn der Abstand erlaubt.", True),
+    ("FUNFACT_ENABLED", "erzaehler", "bool", "Fun Facts an",
+     "Die Erzählerin erzählt in ruhigen Momenten Fakten aus assets/narrator/funfacts.json, "
+     "Zuschauer können mit !fakt einen anfordern.", True),
+    ("FUNFACT_MINUTES", "erzaehler", "float", "Abstand zufälliger Fun Facts (Minuten)",
+     "Nur im Lager oder wenn der Chat still ist.", True),
+    ("FUNFACT_COMMAND_SECONDS", "erzaehler", "int", "Sperre für !fakt (Sekunden)",
+     "Gilt für alle Zuschauer zusammen, damit niemand die Erzählerin zuspammt.", True),
     ("STEP_SECONDS", "spiel", "float", "Sekunden pro Kachel",
      "Laufgeschwindigkeit. Kleiner ist schneller. Hunger und Durst hängen an den Schritten, nicht an der Zeit.", True),
     ("SAY_COOLDOWN", "spiel", "int", "Abstand für !sag (Sekunden)",
@@ -209,6 +216,9 @@ def apply(values, game, llm):
     game.narr_enabled = values.get("NARRATOR_ENABLED", "1") == "1"
     game.narr_cooldown = num(values, "NARRATOR_COOLDOWN", 45)
     game.narr_chance = max(0.0, min(1.0, num(values, "NARRATOR_CHANCE", 50) / 100))
+    game.funfact_enabled = values.get("FUNFACT_ENABLED", "1") == "1"
+    game.funfact_gap = max(1.0, num(values, "FUNFACT_MINUTES", 8)) * 60
+    game.funfact_cmd_gap = max(0, num(values, "FUNFACT_COMMAND_SECONDS", 90))
     game.audio = {
         "enabled": values.get("SOUND_ENABLED", "1") == "1",
         "music": max(0.0, min(1.0, num(values, "MUSIC_VOLUME", 35) / 100)),

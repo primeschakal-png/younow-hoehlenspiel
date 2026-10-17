@@ -1517,9 +1517,10 @@ let narratorTimer = null;
 function showNarrator(m) {
   const box = el("narrator");
   el("narrator-text").textContent = m.text;
+  el("narrator-for").textContent = m.for ? "Fun Fact für " + m.for : "";
   box.classList.add("show");
   clearTimeout(narratorTimer);
-  let ms = Math.max(5000, Math.min(14000, m.text.length * 75));
+  let ms = Math.max(5000, Math.min(22000, m.text.length * 75));
   if (m.audio) audio.voice(m.audio, (secs) => {
     clearTimeout(narratorTimer);
     narratorTimer = setTimeout(() => box.classList.remove("show"), Math.max(ms, secs * 1000 + 1200));
