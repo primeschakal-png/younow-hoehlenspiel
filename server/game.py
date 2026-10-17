@@ -948,7 +948,8 @@ class Game:
             self._leave_camp(f"{h.name} packt zusammen. Die Vorräte gehen aus, es muss weitergehen.")
             return
 
-        if not self.overview and now - self.camp["since"] >= self.idle_zoom_seconds:
+        # Überblick nur in der Stadt: unter Tage gibt es keine Bewohner, und die Dunkelheit verschluckt alles
+        if not self.overview and not self.underground() and now - self.camp["since"] >= self.idle_zoom_seconds:
             self.overview = True
             self.emit({"type": "overview", "on": True})
         if not self.talk:

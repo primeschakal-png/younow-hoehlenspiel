@@ -987,6 +987,7 @@ class CaveScene extends Phaser.Scene {
   // ---------- Überblick im Leerlauf: ganze Stadt, ohne Gegenstände ----------
 
   setOverview(on, instant) {
+    if (on && this.under) return;      // nur in der Stadt
     if (on === this.overview) return;
     this.overview = on;
     const cam = this.cameras.main;
