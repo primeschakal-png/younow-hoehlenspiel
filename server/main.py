@@ -136,7 +136,7 @@ MUSIC_EXT = {".ogg", ".mp3", ".wav", ".m4a", ".opus", ".flac"}
 
 def music_folder(app):
     """Eigener Musikordner aus den Einstellungen, None wenn leer oder nicht vorhanden."""
-    raw = (app.get("music_folder") or "").strip().strip('"')
+    raw = (app["live"].get("music_folder") or "").strip().strip('"')
     if not raw:
         return None
     p = Path(raw).expanduser()
@@ -188,8 +188,10 @@ def count_npc_sprites():
 
 def apply_all(app, values):
     settings.apply(values, app["game"], app["llm"])
-    app["share_key"] = (values.get("SHARE_CHAT_KEY") or "").strip()
-    app["music_folder"] = values.get("MUSIC_FOLDER") or ""
+    # Werte, die sich im laufenden Betrieb ändern: in einem eigenen dict, das App-Objekt selbst bleibt unverändert
+    live = app["live"]
+    live["share_key"] = (values.get("SHARE_CHAT_KEY") or "").strip()
+    live["music_folder"] = values.get("MUSIC_FOLDER") or ""
     app["game"].npc_sprite_count = count_npc_sprites()
     app["younow"].configure(values.get("YOUNOW_ENABLED", "0") == "1", values.get("YOUNOW_USER", ""),
                             settings.num(values, "YOUNOW_POLL_SECONDS", 3))
@@ -216,7 +218,7 @@ async def on_cleanup(app):
 # ---------- Einstellungsseite ----------
 
 def share_key_ok(request):
-    key = request.app.get("share_key", "")
+    key = request.app["live"].get("share_key", "")
     return bool(key) and request.query.get("key", "") == key
 
 
@@ -370,6 +372,7 @@ def make_app():
     app["game"] = Game()
     app["llm"] = LLMClient("http://127.0.0.1:8080/v1", "local")
     app["younow"] = YouNowPoller()
+    app["live"] = {}
     apply_all(app, VALUES)
     # erste Karte neu, damit Kartengröße und Sichtweite aus den Einstellungen gelten
     app["game"].depth = 0
