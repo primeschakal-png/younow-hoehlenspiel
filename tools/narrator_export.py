@@ -21,13 +21,19 @@ from narrator import AUDIO_EXT, Narrator  # noqa: E402
 folder = ROOT / "assets" / "narrator"
 
 
+STAT = {"gesamt": 0, "platzhalter": 0, "schon_vertont": 0}
+
+
 def lines_to_voice():
     rows = []
     for kind, lines in Narrator(folder).all_lines().items():
         for line_id, text in lines:
+            STAT["gesamt"] += 1
             if "{" in text:
+                STAT["platzhalter"] += 1
                 continue
             if any((folder / "audio" / (line_id + ext)).exists() for ext in AUDIO_EXT):
+                STAT["schon_vertont"] += 1
                 continue
             rows.append((line_id, text))
     return rows
@@ -98,4 +104,10 @@ old = folder / "vertonung_kapitel.txt"
 if old.exists():
     old.unlink()
 write_epub(rows, folder / "vertonung.epub")
-print(f"{len(rows)} Sprüche: assets/narrator/vertonung.epub (für Booxter) und vertonung.txt (zur Kontrolle)")
+print(f"{STAT['gesamt']} Sprüche in narrator.json, davon {STAT['platzhalter']} mit Platzhaltern (nicht vertonbar) "
+      f"und {STAT['schon_vertont']} schon vertont (Datei in assets/narrator/audio).")
+print(f"{len(rows)} Sprüche exportiert: assets/narrator/vertonung.epub (für Booxter) und vertonung.txt (zur Kontrolle)")
+if STAT["gesamt"] == 0:
+    print("narrator.json nicht gefunden oder fehlerhaft:", folder / "narrator.json")
+elif not rows and STAT["schon_vertont"]:
+    print("Alles schon vertont. Zum Neu-Vertonen die Dateien in assets/narrator/audio löschen.")

@@ -1,9 +1,9 @@
 """Fertige Erzähler-Audiodateien aus einem Booxter-Ausgabeordner übernehmen.
 
-Aufruf: python tools/narrator_import.py "E:\\buchvertonung\\...\\<Ausgabeordner>"
-Sucht im Ordner (mit Unterordnern) nach Audiodateien. Zuordnung:
+Aufruf: python tools/narrator_import.py "E:\\buchvertonung\\...\\<Ausgabeordner>" [--nummern]
+Nimmt die Audiodateien direkt in diesem Ordner (keine Unterordner). Zuordnung:
   1. steht die ID im Dateinamen (z. B. "007 - kampf_sieg_03.mp3"), gilt die ID
-  2. sonst die führende Nummer im Dateinamen = Kapitelnummer aus der letzten vertonung.txt
+  2. nur mit --nummern: führende Nummer im Dateinamen = Kapitelnummer aus der letzten vertonung.txt
 Kopiert nach assets/narrator/audio/<ID>.<endung>. Vorhandene Dateien werden nicht überschrieben.
 """
 import re
@@ -20,6 +20,7 @@ if len(sys.argv) < 2:
     print(__doc__)
     sys.exit(1)
 src = Path(sys.argv[1])
+nach_nummern = "--nummern" in sys.argv[2:]
 ids = {line_id for lines in Narrator(folder).all_lines().values() for line_id, _ in lines}
 order = []
 listing = folder / "vertonung.txt"
@@ -28,12 +29,12 @@ if listing.exists():
 
 (folder / "audio").mkdir(exist_ok=True)
 done, skipped, unknown = 0, 0, []
-for f in sorted(src.rglob("*")):
+for f in sorted(src.glob("*")):
     if f.suffix.lower() not in AUDIO_EXT:
         continue
     stem = f.stem.lower()
     line_id = next((i for i in sorted(ids, key=len, reverse=True) if i in stem), None)
-    if not line_id:
+    if not line_id and nach_nummern:
         m = re.match(r"\s*(\d+)", f.stem)
         if m and 0 < int(m.group(1)) <= len(order):
             line_id = order[int(m.group(1)) - 1]
