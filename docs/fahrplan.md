@@ -29,7 +29,7 @@ Erste lauffähige Version ohne LLM und ohne YouNow.
 - [x] Gleichstand und fehlende Stimmen (ohne Stimmen: Gespür nach Hinweisen und Not, bis Etappe 5 das LLM übernimmt)
 - [x] Bestechung als Zusatzgewicht, Gegenbieten, öffentliche Nennung (5): Geschenkwert in Likes wird zu Zusatzstimmen
       für die Stimme des Schenkenden (BRIBE_LIKES_PER_VOTE), Ansage im Overlay
-- [x] Normale Likes: über die Top-Fan-Liste (tfl, Likes pro Zuschauer in diesem Stream) für die ersten 6 Fans,
+- [x] Normale Likes: über die Top-Fan-Liste (tfl, Likes pro Zuschauer in diesem Stream) für die Top-Fans (6 bis 7), dort landen auch Likes-Geschenke (onGift, ohne Chatzeile),
       Geschenk-Likes werden abgezogen (PLAIN_LIKES_PER_VOTE)
 
 ## 4. Charakter-System

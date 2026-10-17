@@ -74,7 +74,7 @@ FIELDS = [
     ("BRIBE_LIKES_PER_VOTE", "younow", "int", "Likes pro Zusatzstimme",
      "Geschenkwert in Likes, der eine zusätzliche Stimme ergibt. Ein Geschenk für 2.500 Likes ist bei 1000 also 2,5 Stimmen wert.", True),
     ("PLAIN_LIKES_PER_VOTE", "younow", "int", "Normale Likes pro Zusatzstimme",
-     "Einzelne Likes sieht das Spiel nur bei den Top-Fans des Streams (die ersten 6 nach Likes).", True),
+     "Einzelne Likes sieht das Spiel nur bei den Top-Fans des Streams (die 6 bis 7 mit den meisten Likes). Auch Likes-Geschenke wie „10 Likes“ zählen hier, sie erscheinen nicht als Chatzeile.", True),
     ("SOUND_ENABLED", "ton", "bool", "Ton an", "Musik und Geräusche im Overlay. In OBS bei der Browserquelle „Audio über OBS steuern“ anhaken.", True),
     ("MUSIC_VOLUME", "ton", "int", "Musik (0 bis 100)", "Im Lager und nachts automatisch leiser.", True),
     ("SFX_VOLUME", "ton", "int", "Geräusche (0 bis 100)", "Schritte, Kampf, Truhen, Abstimmung.", True),
