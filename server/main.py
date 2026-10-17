@@ -134,8 +134,23 @@ MUSIC_MOODS = ["stadt", "nacht", "keller", "katakomben", "hoehle"]
 MUSIC_EXT = {".ogg", ".mp3", ".wav", ".m4a", ".opus", ".flac"}
 
 
+def music_folder(app):
+    """Eigener Musikordner aus den Einstellungen, None wenn leer oder nicht vorhanden."""
+    raw = (app.get("music_folder") or "").strip().strip('"')
+    if not raw:
+        return None
+    p = Path(raw).expanduser()
+    return p if p.is_dir() else None
+
+
 async def music_list(request):
-    """Musikstücke je Stimmung. Neue Dateien in den Ordnern gelten ab der nächsten Ebene, ohne Neustart."""
+    """Musikstücke je Stimmung. Neue Dateien in den Ordnern gelten ab der nächsten Ebene, ohne Neustart.
+    Mit eigenem Musikordner: eine gemeinsame Playlist ("_single") für alle Gebiete."""
+    folder = music_folder(request.app)
+    if folder:
+        files = sorted(f for f in folder.rglob("*") if f.is_file() and f.suffix.lower() in MUSIC_EXT)
+        return web.json_response({"_single": True, "alle": [
+            "musik/" + "/".join(quote(part) for part in f.relative_to(folder).parts) for f in files]})
     out = {}
     for mood in MUSIC_MOODS:
         folder = MUSIC_DIR / mood
@@ -152,6 +167,17 @@ async def younow_status(request):
     return web.json_response(st)
 
 
+async def music_file(request):
+    """Dateien aus dem eigenen Musikordner ausliefern, nur Audio und nur innerhalb des Ordners."""
+    folder = music_folder(request.app)
+    if not folder:
+        raise web.HTTPNotFound()
+    target = (folder / request.match_info["path"]).resolve()
+    if folder.resolve() not in target.parents or target.suffix.lower() not in MUSIC_EXT or not target.is_file():
+        raise web.HTTPNotFound()
+    return web.FileResponse(target)
+
+
 def count_npc_sprites():
     """Eigene Bewohner-Sprites: assets/characters/bewohner1.png, bewohner2.png ... ohne Lücke."""
     n = 0
@@ -163,6 +189,7 @@ def count_npc_sprites():
 def apply_all(app, values):
     settings.apply(values, app["game"], app["llm"])
     app["share_key"] = (values.get("SHARE_CHAT_KEY") or "").strip()
+    app["music_folder"] = values.get("MUSIC_FOLDER") or ""
     app["game"].npc_sprite_count = count_npc_sprites()
     app["younow"].configure(values.get("YOUNOW_ENABLED", "0") == "1", values.get("YOUNOW_USER", ""),
                             settings.num(values, "YOUNOW_POLL_SECONDS", 3))
@@ -357,6 +384,7 @@ def make_app():
     app.router.add_get("/api/younow/raw", younow_raw_info)
     app.router.add_get("/api/younow/status", younow_status)
     app.router.add_get("/api/music", music_list)
+    app.router.add_get("/musik/{path:.+}", music_file)
     app.router.add_get("/api/younow/raw.jsonl", younow_raw_download)
     app.router.add_get("/ws", ws_handler)
     app.router.add_static("/static/", OVERLAY)

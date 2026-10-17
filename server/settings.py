@@ -6,6 +6,7 @@ nur, was von der Vorgabe abweicht. So kommen neue Vorgaben nach einem Update aut
 
 from pathlib import Path
 
+import hashlib
 import game as game_mod
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -90,6 +91,9 @@ FIELDS = [
      "Einzelne Likes sieht das Spiel nur bei den Top-Fans des Streams (die 6 bis 7 mit den meisten Likes). Auch Likes-Geschenke wie „10 Likes“ zählen hier, sie erscheinen nicht als Chatzeile.", True),
     ("SOUND_ENABLED", "ton", "bool", "Ton an", "Musik und Geräusche im Overlay. In OBS bei der Browserquelle „Audio über OBS steuern“ anhaken.", True),
     ("MUSIC_VOLUME", "ton", "int", "Musik (0 bis 100)", "Im Lager und nachts automatisch leiser.", True),
+    ("MUSIC_FOLDER", "ton", "text", "Eigener Musikordner",
+     "Leer: Musik je Gebiet aus assets/audio/music/<gebiet>. Mit Ordner (z. B. E:\\Musik\\StreamBeats): "
+     "überall eine gemeinsame Playlist in zufälliger Reihenfolge, Unterordner zählen mit.", True),
     ("SFX_VOLUME", "ton", "int", "Geräusche (0 bis 100)", "Schritte, Kampf, Truhen, Abstimmung.", True),
     ("LLM_ENABLED", "llm", "bool", "LLM benutzen", "Aus: Die Figur entscheidet nach eigenen Regeln und spricht nicht.", True),
     ("LLM_BASE_URL", "llm", "text", "Adresse", "OpenAI-kompatibel, z. B. http://127.0.0.1:8080/v1", True),
@@ -226,6 +230,9 @@ def apply(values, game, llm):
         "enabled": values.get("SOUND_ENABLED", "1") == "1",
         "music": max(0.0, min(1.0, num(values, "MUSIC_VOLUME", 35) / 100)),
         "sfx": max(0.0, min(1.0, num(values, "SFX_VOLUME", 70) / 100)),
+        # nur ein Kennzeichen, damit das Overlay die Liste neu lädt; der Pfad selbst geht nicht an die Zuschauer
+        "playlist": hashlib.sha1((values.get("MUSIC_FOLDER") or "").strip().encode()).hexdigest()[:8]
+                    if (values.get("MUSIC_FOLDER") or "").strip() else "gebiete",
     }
     if llm is not None:
         llm.enabled = values.get("LLM_ENABLED", "1") == "1"

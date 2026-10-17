@@ -387,6 +387,13 @@ const audio = {
     this.enabled = cfg.enabled !== false;
     if (typeof cfg.music === "number") this.music = cfg.music;
     if (typeof cfg.sfx === "number") this.sfx = cfg.sfx;
+    if (cfg.playlist && this.playlist && cfg.playlist !== this.playlist) {
+      // Musikordner geändert: neue Liste laden und gleich wechseln
+      this.playlist = cfg.playlist;
+      this.stopMusic();
+      this.loadTracks().then(() => this.playMusic(this.scene ? this.scene.musicMood() : this.wantMood, true));
+    }
+    this.playlist = cfg.playlist || this.playlist;
     if (!this.enabled) this.stopMusic();
     else this.playMusic(this.wantMood, true);
     const hint = document.getElementById("sound-hint");
@@ -427,11 +434,13 @@ const audio = {
   tracksFor(mood) {
     const t = this.tracks || {};
     for (const m of MUSIC_FALLBACK[mood] || [mood]) if (t[m] && t[m].length) return t[m];
-    for (const list of Object.values(t)) if (list.length) return list;
+    for (const list of Object.values(t)) if (Array.isArray(list) && list.length) return list;
     return [];
   },
 
   playMusic(mood, force) {
+    // eigener Musikordner: eine Playlist für alles, Gebietswechsel unterbrechen das Stück nicht
+    if (mood && this.tracks && this.tracks._single) mood = "alle";
     this.wantMood = mood;
     if (!mood || !this.enabled || !this.scene || this.music <= 0) {
       this.stopMusic();

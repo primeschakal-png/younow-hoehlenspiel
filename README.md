@@ -34,6 +34,13 @@ Vertonen: `python tools/narrator_export.py` schreibt alle Sprüche ohne Platzhal
 und `vertonung.epub` (für Booxter: ein Kapitel pro Spruch, als Einzelclips markiert). Fertige Dateien holt `python tools/narrator_import.py <Booxter-Ausgabeordner>` ab. Oder Audiodateien mit der ID als Namen (z. B. `kampf_sieg_03.mp3`) nach `assets/narrator/audio/` legen,
 dann spricht der Erzähler sie, und die Musik wird solange leiser. Häufigkeit auf der Einstellungsseite.
 
+## Musik
+
+Standard: je Gebiet die Stücke aus `assets/audio/music/<gebiet>/` (stadt, nacht, keller, katakomben, hoehle).
+Alternativ auf der Einstellungsseite unter Ton einen eigenen Musikordner angeben, z. B. einen StreamBeats-Download:
+dann läuft überall eine gemeinsame Playlist in zufälliger Reihenfolge, Unterordner zählen mit. Eigene Musikdateien
+kommen nicht ins Git-Repo.
+
 ## Spiel im Internet zeigen
 
 `teilen.bat` macht das laufende Spiel über einen Cloudflare-Tunnel unter einer öffentlichen Adresse
