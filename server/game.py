@@ -11,6 +11,7 @@ import time
 from datetime import datetime
 
 import entities as ent_mod
+import townsfolk
 from character import Character
 from hero import Hero
 from maze import BACK, LEFT, RIGHT, STEP, Maze
@@ -118,6 +119,19 @@ class Game:
         self.camp_max_seconds = camp_max_minutes * 60
         self.camp_pause_seconds = camp_pause_minutes * 60
         self.audio = {"enabled": True, "music": 0.35, "sfx": 0.7}
+        # Stadtbewohner
+        self.npcs = []
+        self.npc_count_day = 5
+        self.npc_count_night = 2
+        self.npc_sprite_count = 0          # eigene Sprites bewohner1.png ... (0: Platzhalter)
+        self.idle_zoom_seconds = 120       # so lange im Lager, dann zoomt die Karte heraus
+        self.hero_talk_cooldown = 150      # Sekunden zwischen zwei Gesprächen der Figur
+        self.npc_talk_cooldown = 90        # Sekunden zwischen zwei Gesprächen unter Bewohnern
+        self.talk = None
+        self.last_hero_talk = -1e9
+        self.last_npc_talk = -1e9
+        self.overview = False
+        self.speech = []                   # geplante Sprechzeilen: (zeit, nachricht)
         self.cells_w = cells_w
         self.cells_h = cells_h
         self.reveal_radius = reveal_radius
@@ -175,6 +189,11 @@ class Game:
             parts.append("Zuletzt: " + " ".join(self.recent[-4:]))
         return " ".join(parts)
 
+    def request_llm_raw(self, kind, messages, prio, **meta):
+        meta["hero_id"] = self.hero_id
+        self.llm_queue.append({"id": next(self.llm_ids), "kind": kind, "prio": prio,
+                               "created": time.monotonic(), "meta": meta, "messages": messages})
+
     def request_llm(self, kind, task, prio, **meta):
         meta["hero_id"] = self.hero_id
         self.llm_queue.append({
@@ -220,6 +239,19 @@ class Game:
         self.request_llm("comment", task, prio)
 
     def on_llm_result(self, req, data):
+        if req["kind"] == "dialog":
+            t = self.talk
+            if t is None or id(t) != req["meta"].get("talk") or t["started"]:
+                return
+            lines = townsfolk.parse_lines(data)
+            if not lines:
+                if t["hero"]:
+                    lines = townsfolk.fallback_lines(self.rnd)
+                else:
+                    self._end_talk(t)
+                    return
+            self._play_dialog(t, lines)
+            return
         if data is None or req["meta"]["hero_id"] != self.hero_id or self.state == "dead":
             return
         if req["kind"] == "decide":
@@ -283,6 +315,14 @@ class Game:
         self.last_decision = None
         self.llm_queue = []
         self.revealed = set()
+        self.talk = None
+        self.speech = []
+        self.overview = False
+        self.npcs = []
+        if area_for(self.depth)["key"] == "stadt":
+            count = self.npc_count_night if self._night() else self.npc_count_day
+            avoid = {self.maze.start, self.maze.stairs}
+            self.npcs = townsfolk.spawn(self.maze, count, avoid, random.Random(seed + 2), self.npc_sprite_count)
         self.visited = {self.cell}      # Gedächtnis: Kreuzungen dieser Ebene, an denen die Figur schon war
         self._reveal_around(self.pos, emit=False)
         self.emit(self.full_state())
@@ -306,6 +346,132 @@ class Game:
         if 20 <= h < 22:
             return "Es wird dunkel."
         return "Es ist Nacht und dunkel in den Gassen."
+
+    # ---------- Stadtbewohner ----------
+
+    def _npc_tick(self, now):
+        for n in self.npcs:
+            if n.step(now):
+                self.emit({"type": "npc_pos", "id": n.id, "x": n.pos[0], "y": n.pos[1], "facing": n.facing})
+        # Gespräch ohne Antwort vom LLM: kurzer Ersatz, damit niemand ewig wartet
+        t = self.talk
+        if t and not t["started"] and now > t["deadline"]:
+            if t["hero"]:
+                self._play_dialog(t, townsfolk.fallback_lines(self.rnd))
+            else:
+                self._end_talk(t)
+        if t and t["started"] and now > t["until"]:
+            self._end_talk(t)
+        # im Überblick reden auch Bewohner miteinander
+        if (self.overview and not self.talk and now - self.last_npc_talk > self.npc_talk_cooldown
+                and len(self.npcs) >= 2):
+            free = [n for n in self.npcs if not n.busy(now) and not n.path]
+            for i, a in enumerate(free):
+                for b in free[i + 1:]:
+                    if townsfolk.distance(a.pos, b.pos) <= 2.5:
+                        self._start_npc_talk(a, b, now)
+                        return
+
+    def _try_hero_talk(self, walking):
+        now = time.monotonic()
+        if self.talk or now - self.last_hero_talk < self.hero_talk_cooldown:
+            return False
+        near = [n for n in self.npcs if not n.busy(now) and now - n.last_talk > 600
+                and townsfolk.distance(n.pos, self.pos) <= 3.0]
+        if not near:
+            return False
+        n = min(near, key=lambda n: townsfolk.distance(n.pos, self.pos))
+        deep = self.rnd.random() < (0.6 if self.state == "camp" else 0.3)
+        hint, effect = None, None
+        r = self.rnd.random()
+        if r < 0.3:
+            hint = f"die Treppe nach unten liege irgendwo im {self._stairs_direction()}"
+            effect = "hint"
+        elif r < 0.45:
+            hint = "B hat etwas Brot übrig und schenkt es A"
+            effect = "food"
+        n.talk_until = now + 40
+        n.path = []
+        n.last_talk = now
+        self.last_hero_talk = now
+        self.talk = {"hero": True, "a": None, "b": n, "started": False, "deadline": now + 12,
+                     "until": now + 40, "effect": effect, "walking": walking}
+        if walking:
+            self.state = "event"
+            self.resume_at = now + 40
+        self.emit({"type": "npc_pos", "id": n.id, "x": n.pos[0], "y": n.pos[1], "facing": n.facing})
+        topic = self.rnd.choice(townsfolk.TOPICS)
+        c = self.character
+        me = (self.hero.name, f"{c.klass} {c.origin}, {c.traits[0]} und {c.traits[1]}, spricht {c.speech}, "
+                              f"gerade ein {c.label()}")
+        msgs = townsfolk.dialog_messages(me, (n.name, f"{n.job}, {n.quirk}"), topic, hint, deep, self.situation())
+        self.request_llm_raw("dialog", msgs, 2, talk=id(self.talk))
+        return True
+
+    def _start_npc_talk(self, a, b, now):
+        for n in (a, b):
+            n.talk_until = now + 40
+        self.last_npc_talk = now
+        self.talk = {"hero": False, "a": a, "b": b, "started": False, "deadline": now + 15,
+                     "until": now + 40, "effect": None, "walking": False}
+        msgs = townsfolk.dialog_messages((a.name, f"{a.job}, {a.quirk}"), (b.name, f"{b.job}, {b.quirk}"),
+                                         self.rnd.choice(townsfolk.TOPICS), None, self.rnd.random() < 0.5)
+        self.request_llm_raw("dialog", msgs, 1, talk=id(self.talk))
+
+    def _play_dialog(self, t, lines):
+        now = time.monotonic()
+        t["started"] = True
+        gap = 3.4
+        at = now + 0.3
+        for who, text in lines:
+            speaker = t["a"] if who == "A" else t["b"]
+            if speaker is None:
+                msg = {"type": "say", "text": text, "to": None}
+            else:
+                msg = {"type": "npc_say", "id": speaker.id, "name": speaker.name, "text": text}
+            self.speech.append((at, msg))
+            at += max(gap, min(7.0, len(text) * 0.07))
+        t["until"] = at + 1.0
+        for n in (t["a"], t["b"]):
+            if n is not None:
+                n.talk_until = t["until"]
+        if t["hero"] and t["walking"] and self.state == "event":
+            self.resume_at = t["until"]
+
+    def _end_talk(self, t):
+        if self.talk is not t:
+            return
+        self.talk = None
+        if t["hero"] and t["started"]:
+            h = self.hero
+            if t["effect"] == "food" and h.food < h.max_food:
+                h.food += 1
+                self.emit({"type": "loot", "items": ["food"]})
+                self.emit_stats()
+            self.recent.append(f"Du hast mit {t['b'].name} ({t['b'].job}) geplaudert.")
+            self.recent = self.recent[-6:]
+        if t["hero"] and t["walking"] and self.state == "event":
+            self.resume_at = time.monotonic()
+
+    def _speech_tick(self, now):
+        if not self.speech:
+            return
+        due = [m for at, m in self.speech if at <= now]
+        self.speech = [(at, m) for at, m in self.speech if at > now]
+        for m in due:
+            self.emit(m)
+
+    def _stairs_direction(self):
+        sx, sy = self.maze.stairs
+        cx, cy = self.cell
+        dx, dy = sx - cx, sy - cy
+        ns = "Süden" if dy > 0 else "Norden"
+        ew = "Osten" if dx > 0 else "Westen"
+        if abs(dx) > 2 * abs(dy):
+            return ew
+        if abs(dy) > 2 * abs(dx):
+            return ns
+        return ns[:-2] + ew.lower()      # Nordosten, Südwesten ...
 
     def underground(self):
         return area_for(self.depth)["key"] != "stadt"
@@ -364,6 +530,9 @@ class Game:
             "entities": self.visible_entities(),
             "camp": self._camp_info(),
             "audio": self.audio,
+            "npcs": [n.info() for n in self.npcs],
+            "npc_sprites": self.npc_sprite_count,
+            "overview": self.overview,
             "chat_overlay": getattr(self, "chat_overlay", False),
             "dead": self.state == "dead",
             "hall": self.hall[-5:],
@@ -485,6 +654,8 @@ class Game:
             self._archetype_changed(self.character.drift(dt))
             if self.hero.hp >= self.hero.max_hp * 0.75:
                 self.character.recovered()
+        self._speech_tick(now)
+        self._npc_tick(now)
         if self.state == "dead":
             if now >= self.resume_at:
                 self.new_hero()
@@ -542,6 +713,8 @@ class Game:
 
     def _arrive(self):
         self.visited.add(self.cell)
+        if self._try_hero_talk(walking=True):
+            return
         e = self.entities.get(self.cell)
         if e:
             self._encounter(e)
@@ -751,6 +924,9 @@ class Game:
         self.emit({"type": "camp", **self._camp_info()})
 
     def _leave_camp(self, reason):
+        if self.overview:
+            self.overview = False
+            self.emit({"type": "overview", "on": False})
         self.camp = None
         self.state = "walking"
         self.camp_left_at = time.monotonic()
@@ -771,6 +947,12 @@ class Game:
         if (h.thirst < 60 and h.water == 0) or (h.hunger < 50 and h.food == 0):
             self._leave_camp(f"{h.name} packt zusammen. Die Vorräte gehen aus, es muss weitergehen.")
             return
+
+        if not self.overview and now - self.camp["since"] >= self.idle_zoom_seconds:
+            self.overview = True
+            self.emit({"type": "overview", "on": True})
+        if not self.talk:
+            self._try_hero_talk(walking=False)
 
         if now - self.camp["since"] >= self.camp_max_seconds:
             self._leave_camp(f"{h.name} hat genug gerastet und zieht weiter.")

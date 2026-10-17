@@ -121,8 +121,17 @@ async def younow_status(request):
     return web.json_response(st)
 
 
+def count_npc_sprites():
+    """Eigene Bewohner-Sprites: assets/characters/bewohner1.png, bewohner2.png ... ohne Lücke."""
+    n = 0
+    while (ROOT / "assets" / "characters" / f"bewohner{n + 1}.png").exists():
+        n += 1
+    return n
+
+
 def apply_all(app, values):
     settings.apply(values, app["game"], app["llm"])
+    app["game"].npc_sprite_count = count_npc_sprites()
     app["younow"].configure(values.get("YOUNOW_ENABLED", "0") == "1", values.get("YOUNOW_USER", ""),
                             settings.num(values, "YOUNOW_POLL_SECONDS", 3))
 

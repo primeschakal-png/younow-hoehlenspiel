@@ -8,6 +8,9 @@
 
 ## Figuren
 
+- **Stadtbewohner** `characters/bewohner*.png`: sobald vorhanden, wie die Spielfigur mit dem LPC-Generator erstellt,
+  Credits je Datei in `characters/bewohnerN-credits.txt`.
+
 - **Spielfigur** `characters/hero.png`, erstellt mit dem Universal LPC Spritesheet Character Generator (Liberated Pixel Cup).
   Alle Einzelteile sind unter OGA-BY 3.0 verfügbar (die Haare zusätzlich CC0), verwendet wird OGA-BY 3.0.
   Künstler: Stephen Challener (Redshrike), Johannes Sjölund (wulax), Sander Frenken (castelonia),

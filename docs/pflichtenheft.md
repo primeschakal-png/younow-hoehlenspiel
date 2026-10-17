@@ -207,3 +207,14 @@ Die Figur merkt sich pro Ebene, an welchen Kreuzungen sie war. Für jede Richtun
 unbekannten Zellen in den nächsten 10 Schritten und den Abstand zur nächsten unbekannten Zelle. Richtungen ohne
 Neues bekommen im Hinweis „(schon erkundet)“, das sehen Chat und LLM. Die eigene Wahl bevorzugt Unbekanntes,
 Bedürfnisse (Wasser, Essen, Heilung) können trotzdem zu bekannten Orten führen.
+
+## Stadtbewohner und Überblick
+
+Auf Stadtebenen laufen Bewohner durch die Gassen (NPC_COUNT_DAY, nachts NPC_COUNT_NIGHT), jeder mit Name, Beruf
+und Eigenheit (`server/townsfolk.py`). Trifft die Figur einen Bewohner, bleiben beide stehen und reden: ein kurzer
+Wortwechsel oder ein philosophisches Gespräch, vom LLM in einer einzigen Anfrage als Zeilenliste geschrieben.
+Manchmal verrät der Bewohner die grobe Richtung der Treppe oder schenkt Brot. Ohne LLM gibt es kurze feste Sätze.
+Im Lager zoomt die Karte nach IDLE_ZOOM_MINUTES heraus: ganze Stadt ohne Nebel, Gegenstände und Treppe ausgeblendet,
+Figuren größer gezeichnet, Bewohner reden dann auch untereinander. Chat oder Ende des Lagers holen die Kamera zurück.
+Eigene Bewohner-Sprites: `assets/characters/bewohner1.png`, `bewohner2.png` ... (LPC-Format wie hero.png), bis dahin
+eingefärbte Varianten der Figur.

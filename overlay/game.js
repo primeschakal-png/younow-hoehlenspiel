@@ -154,14 +154,19 @@ const PLAZA_PLANTS = [16, 2, 3, 10, 11, 12];  // Ecken eines Platzes
 // LPC-Spritesheet: 64x64 je Bild, 13 Bilder pro Zeile, Richtungen je Animation in der Reihenfolge N, W, S, O
 const DIR_ROW = { N: 0, W: 1, S: 2, E: 3 };
 
-function makeHeroAnims(sc) {
+function makeHeroAnims(sc, sheet = "herosheet", prefix = "") {
   const mk = (key, base, from, to, rate, repeat) => {
     for (const [d, r] of Object.entries(DIR_ROW)) {
       const frames = [];
-      for (let c = from; c <= to; c++) frames.push({ key: "herosheet", frame: (base + r) * 13 + c });
-      sc.anims.create({ key: key + "_" + d, frames, frameRate: rate, repeat });
+      for (let c = from; c <= to; c++) frames.push({ key: sheet, frame: (base + r) * 13 + c });
+      if (!sc.anims.exists(prefix + key + "_" + d)) sc.anims.create({ key: prefix + key + "_" + d, frames, frameRate: rate, repeat });
     }
   };
+  if (prefix) {     // Bewohner brauchen nur Gehen und Stehen
+    mk("walk", 8, 1, 8, 10, -1);
+    mk("idle", 22, 0, 1, 2, -1);
+    return;
+  }
   mk("walk", 8, 1, 8, 12, -1);
   mk("idle", 22, 0, 1, 2, -1);
   mk("slash", 12, 0, 5, 14, 0);
@@ -519,6 +524,9 @@ class CaveScene extends Phaser.Scene {
     this.levelTimers = [];
     this.layer = this.add.container(0, 0).setDepth(0);
     this.tileImgs = [];
+    this.revealedSet = new Set();
+    this.overview = false;
+    this.ovShown = [];
     const areaKey = (s.area && s.area.key) || "stadt";
     const under = UNDER[areaKey] && this.textures.exists("unter") && this.cache.json.get("unterwelt") ? UNDER[areaKey] : null;
     this.under = under;
@@ -556,6 +564,9 @@ class CaveScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.figure, true, 0.12, 0.12);
     this.cameras.main.setZoom(ZOOM);
     this.cameras.main.setFollowOffset(0, -90 / ZOOM);
+    this.mapSize = [s.tw * TILE, s.th * TILE];
+    this.setNpcs(s.npcs || [], s.npc_sprites || 0);
+    if (s.overview) this.setOverview(true, true);
     this.applyAmbient();
   }
 
@@ -837,7 +848,136 @@ class CaveScene extends Phaser.Scene {
     this.night = t.dark > 0.3;
     audio.setQuiet(this.camping || this.night);
     this.ambient.setFillStyle(t.color, t.tint).setVisible(t.tint > 0.01);
-    this.setDarkness(t.dark > 0.01 ? t.dark : 0);
+    // im Überblick kein Lichtkreis, sonst wäre nachts fast alles schwarz
+    this.setDarkness(t.dark > 0.01 && !this.overview ? t.dark : 0);
+  }
+
+  // ---------- Stadtbewohner ----------
+
+  setNpcs(list, spriteCount) {
+    for (const n of (this.npcs || new Map()).values()) { n.sprite.destroy(); if (n.bubble) n.bubble.destroy(); }
+    this.npcs = new Map();
+    for (const n of list) this.addNpc(n, spriteCount);
+  }
+
+  addNpc(n, spriteCount) {
+    const own = spriteCount > 0 && n.sprite >= 0;
+    const key = own ? "bewohner" + (n.sprite + 1) : "herosheet";
+    const make = () => {
+      if (!this.textures.exists(key)) return;
+      const prefix = own ? key + "_" : "";
+      if (own) makeHeroAnims(this, key, prefix);
+      const spr = this.add.sprite(n.x * TILE, n.y * TILE + 14, key, 22 * 13).setOrigin(0.5, 0.97).setDepth(9);
+      if (!own) spr.setTint(n.tint);     // Platzhalter: eingefärbte Heldenfigur
+      if (this.overview) spr.setScale(2.2);
+      const npc = { id: n.id, name: n.name, sprite: spr, prefix, facing: n.facing || "S", bubble: null, x: n.x, y: n.y };
+      this.npcs.set(n.id, npc);
+      spr.play(prefix + "idle_" + npc.facing, true);
+      this.updateNpcVisibility(npc);
+    };
+    if (own && !this.textures.exists(key)) {
+      this.load.spritesheet(key, "assets/characters/" + key + ".png", { frameWidth: 64, frameHeight: 64 });
+      this.load.once("complete", make);
+      this.load.start();
+    } else {
+      make();
+    }
+  }
+
+  updateNpcVisibility(npc) {
+    const vis = this.overview || this.revealedSet.has(Math.floor(npc.x) + "," + Math.floor(npc.y));
+    npc.sprite.setVisible(vis);
+    if (npc.bubble && !vis) npc.bubble.setVisible(false);
+  }
+
+  npcPos(m) {
+    const npc = this.npcs && this.npcs.get(m.id);
+    if (!npc) return;
+    npc.x = m.x; npc.y = m.y;
+    npc.facing = m.facing || npc.facing;
+    const duration = this.step * 2 * 1000 * 0.95;
+    this.tweens.add({ targets: npc.sprite, x: m.x * TILE, y: m.y * TILE + 14, duration, ease: "Linear" });
+    npc.sprite.play(npc.prefix + "walk_" + npc.facing, true);
+    if (npc.idleTimer) npc.idleTimer.remove();
+    npc.idleTimer = this.time.delayedCall(this.step * 2 * 1000 * 1.6, () => npc.sprite.active && npc.sprite.play(npc.prefix + "idle_" + npc.facing, true));
+    this.updateNpcVisibility(npc);
+  }
+
+  npcSay(m) {
+    const npc = this.npcs && this.npcs.get(m.id);
+    if (!npc) return;
+    if (!npc.bubble) {
+      npc.bubble = this.add.text(0, 0, "", {
+        fontFamily: "Trebuchet MS, Verdana, sans-serif",
+        fontSize: "16px",
+        color: "#1a1620",
+        backgroundColor: "#d9e6f2",
+        padding: { x: 8, y: 5 },
+        wordWrap: { width: 300 },
+        align: "center",
+      }).setOrigin(0.5, 1).setDepth(21).setResolution(ZOOM);
+    }
+    // im Gespräch spricht immer nur einer: andere Blasen ausblenden
+    this.sayText.setVisible(false);
+    for (const other of this.npcs.values()) if (other !== npc && other.bubble) other.bubble.setVisible(false);
+    npc.bubble.setText(m.name + ": " + m.text).setVisible(npc.sprite.visible).setAlpha(1);
+    if (npc.bubbleTimer) npc.bubbleTimer.remove();
+    const ms = Math.max(3500, Math.min(8000, m.text.length * 70));
+    npc.bubbleTimer = this.time.delayedCall(ms, () => {
+      this.tweens.add({ targets: npc.bubble, alpha: 0, duration: 400, onComplete: () => npc.bubble.setVisible(false) });
+    });
+    // Sprecher dreht sich zur Figur, wenn sie nah ist
+    const dx = this.figure.x - npc.sprite.x, dy = this.figure.y - npc.sprite.y;
+    if (Math.abs(dx) + Math.abs(dy) < 4 * TILE) {
+      npc.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "E" : "W") : (dy > 0 ? "S" : "N");
+      npc.sprite.play(npc.prefix + "idle_" + npc.facing, true);
+    }
+  }
+
+  // ---------- Überblick im Leerlauf: ganze Stadt, ohne Gegenstände ----------
+
+  setOverview(on, instant) {
+    if (on === this.overview) return;
+    this.overview = on;
+    const cam = this.cameras.main;
+    const things = [...this.entities.values()].flatMap((e) => e.imgs);
+    if (this.stairsImg) things.push(this.stairsImg);
+    if (on) {
+      this.ovShown = [];
+      for (const row of this.tileImgs) {
+        for (const img of row) {
+          if (img.visible) continue;
+          for (const t of [img, ...(img.extras || [])]) { t.setVisible(true).setAlpha(1); this.ovShown.push(t); }
+        }
+      }
+      for (const d of this.decor || []) if (!d.img.visible) { d.img.setVisible(true); this.ovShown.push(d.img); }
+      things.forEach((t) => t.setVisible(false));
+      const [w, h] = this.mapSize;
+      const zoom = Math.min(1280 / w, 720 / h) * 0.96;
+      cam.stopFollow();
+      if (instant) { cam.setZoom(zoom); cam.centerOn(w / 2, h / 2); }
+      else { cam.pan(w / 2, h / 2, 4000, "Sine.easeInOut"); cam.zoomTo(zoom, 4000, "Sine.easeInOut"); }
+    } else {
+      this.ovShown.forEach((t) => t.setVisible(false));
+      this.ovShown = [];
+      for (const e of this.entities.values()) {
+        const vis = this.revealedSet.has(Math.floor(e.x) + "," + Math.floor(e.y));
+        e.imgs.forEach((i) => i.setVisible(vis));
+      }
+      if (this.stairsImg && this.stairsPos) {
+        this.stairsImg.setVisible(this.revealedSet.has(Math.floor(this.stairsPos[0]) + "," + Math.floor(this.stairsPos[1])));
+      }
+      // Folge-Versatz: die Figur steht etwas über der Bildmitte
+      cam.pan(this.figure.x, this.figure.y + 90 / ZOOM, instant ? 0 : 2500, "Sine.easeInOut");
+      cam.zoomTo(ZOOM, instant ? 0 : 2500, "Sine.easeInOut", false, (c, p) => {
+        if (p === 1) c.startFollow(this.figure, true, 0.12, 0.12, 0, -90 / ZOOM);
+      });
+    }
+    for (const npc of (this.npcs || new Map()).values()) this.updateNpcVisibility(npc);
+    // herausgezoomt wären die Figuren winzig: etwas größer zeichnen
+    const people = [this.figure, ...[...(this.npcs || new Map()).values()].map((n) => n.sprite)];
+    this.tweens.add({ targets: people, scale: on ? 2.2 : 1, duration: instant ? 0 : 2500 });
+    this.applyAmbient();
   }
 
   setDarkness(alpha) {
@@ -1014,6 +1154,7 @@ class CaveScene extends Phaser.Scene {
   reveal(list, instant) {
     const shown = new Set();
     for (const [x, y] of list) {
+      this.revealedSet.add(x + "," + y);
       const img = this.tileImgs[y] && this.tileImgs[y][x];
       if (!img || img.visible) continue;
       const targets = [img, ...(img.extras || [])];
@@ -1051,6 +1192,7 @@ class CaveScene extends Phaser.Scene {
 
   say(text, to) {
     if (!text) return;
+    for (const npc of (this.npcs || new Map()).values()) if (npc.bubble) npc.bubble.setVisible(false);
     this.sayText.setText((to ? "@" + to + " " : "") + text).setVisible(true).setAlpha(1);
     if (this.sayTimer) this.sayTimer.remove();
     const ms = Math.max(4500, Math.min(11000, text.length * 75));
@@ -1061,13 +1203,21 @@ class CaveScene extends Phaser.Scene {
 
   update(time) {
     if (!this.figure) return;
+    const ts = 1 / this.cameras.main.zoom;   // Texte bleiben auf dem Bildschirm gleich groß
+    this.sayText.setScale(ts);
+    this.actText.setScale(ts);
+    for (const npc of (this.npcs || new Map()).values()) {
+      if (npc.bubble && npc.bubble.visible) {
+        npc.bubble.setScale(ts).setPosition(npc.sprite.x, npc.sprite.y - 50 * npc.sprite.scaleY);
+      }
+    }
     if (this.ambient.visible) this.ambient.setPosition(this.figure.x, this.figure.y);
     if (this.dark && this.dark.visible) {
       // am Lagerfeuer flackert das Licht etwas
       const flicker = this.camping ? 1.15 + Math.sin(time / 90) * 0.03 + Math.sin(time / 37) * 0.02 : 1;
       this.dark.setPosition(this.figure.x, this.figure.y - 20).setDisplaySize(LIGHT_SIZE * flicker, LIGHT_SIZE * flicker);
     }
-    let top = this.figure.y - (this.useSheet ? 50 : 18);
+    let top = this.figure.y - (this.useSheet ? 50 : 18) * this.figure.scaleY;
     if (this.actText.visible) {
       this.actText.setPosition(this.figure.x, top);
       top -= this.actText.displayHeight + 3;
@@ -1339,6 +1489,15 @@ function handle(msg) {
       break;
     case "audio":
       audio.configure(msg);
+      break;
+    case "npc_pos":
+      scene.npcPos(msg);
+      break;
+    case "npc_say":
+      scene.npcSay(msg);
+      break;
+    case "overview":
+      scene.setOverview(msg.on);
       break;
     case "step":
       scene.step = msg.step;

@@ -16,6 +16,7 @@ LOCAL = ROOT / ".env"
 GROUPS = [
     ("spiel", "Ablauf"),
     ("lager", "Lager und Leerlauf"),
+    ("bewohner", "Stadtbewohner"),
     ("balance", "Überleben und Balance"),
     ("karte", "Karte"),
     ("younow", "YouNow"),
@@ -37,6 +38,12 @@ FIELDS = [
      "Danach packt die Figur zusammen und erkundet allein weiter.", True),
     ("CAMP_PAUSE_MINUTES", "lager", "float", "Pause bis zum nächsten Lager (Minuten)",
      "So lange muss die Figur nach einem Lager unterwegs sein, bevor sie wieder rastet.", True),
+    ("NPC_COUNT_DAY", "bewohner", "int", "Bewohner am Tag", "So viele laufen auf einer Stadtebene herum.", True),
+    ("NPC_COUNT_NIGHT", "bewohner", "int", "Bewohner nachts", "Zwischen 23 und 6 Uhr. Gilt ab der nächsten Ebene.", True),
+    ("NPC_TALK_MINUTES", "bewohner", "float", "Abstand zwischen Gesprächen (Minuten)",
+     "So lange redet die Figur nach einem Gespräch mit keinem Bewohner.", True),
+    ("IDLE_ZOOM_MINUTES", "bewohner", "float", "Herauszoomen nach (Minuten im Lager)",
+     "Dann zeigt die Karte die ganze Stadt mit ihren Bewohnern, ohne Gegenstände.", True),
     ("STEP_SECONDS", "spiel", "float", "Sekunden pro Kachel",
      "Laufgeschwindigkeit. Kleiner ist schneller. Hunger und Durst hängen an den Schritten, nicht an der Zeit.", True),
     ("SAY_COOLDOWN", "spiel", "int", "Abstand für !sag (Sekunden)",
@@ -189,6 +196,10 @@ def apply(values, game, llm):
     game.likes_per_vote = max(1, int(num(values, "BRIBE_LIKES_PER_VOTE", 1000)))
     game.plain_likes_per_vote = max(1, int(num(values, "PLAIN_LIKES_PER_VOTE", 20)))
     game.chat_overlay = values.get("CHAT_OVERLAY", "0") == "1"
+    game.npc_count_day = max(0, int(num(values, "NPC_COUNT_DAY", 5)))
+    game.npc_count_night = max(0, int(num(values, "NPC_COUNT_NIGHT", 2)))
+    game.hero_talk_cooldown = num(values, "NPC_TALK_MINUTES", 2.5) * 60
+    game.idle_zoom_seconds = num(values, "IDLE_ZOOM_MINUTES", 2) * 60
     game.audio = {
         "enabled": values.get("SOUND_ENABLED", "1") == "1",
         "music": max(0.0, min(1.0, num(values, "MUSIC_VOLUME", 35) / 100)),
