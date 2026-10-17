@@ -31,7 +31,7 @@ Grafik: Kacheln aus „Mage City Arcanos“ von Hyptosis (CC0), Unterwelt, Monst
 Sprüche je Anlass stehen in `assets/narrator/narrator.json` (Tod, Kampf, neues Gebiet, Sackgasse, Bestechung ...).
 Änderungen gelten sofort. Platzhalter: `{held}`, `{monster}`, `{ebene}`, `{gebiet}`, `{zuschauer}`, `{bewohner}`, `{archetyp}`.
 Vertonen: `python tools/narrator_export.py` schreibt alle Sprüche ohne Platzhalter nach `assets/narrator/vertonung.txt`
-(ID und Text). Audiodateien mit der ID als Namen (z. B. `kampf_sieg_03.mp3`) nach `assets/narrator/audio/` legen,
+und `vertonung.epub` (für Booxter: ein Kapitel pro Spruch, als Einzelclips markiert). Fertige Dateien holt `python tools/narrator_import.py <Booxter-Ausgabeordner>` ab. Oder Audiodateien mit der ID als Namen (z. B. `kampf_sieg_03.mp3`) nach `assets/narrator/audio/` legen,
 dann spricht der Erzähler sie, und die Musik wird solange leiser. Häufigkeit auf der Einstellungsseite.
 
 ## Spiel im Internet zeigen

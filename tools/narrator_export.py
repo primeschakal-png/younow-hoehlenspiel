@@ -52,6 +52,7 @@ def write_epub(rows, path):
     <dc:identifier id="bookid">{book_id}</dc:identifier>
     <dc:title>Erzaehler Hoehlenspiel</dc:title>
     <dc:language>de</dc:language>
+    <dc:subject>booxter:clips</dc:subject>
     <meta property="dcterms:modified">{now}</meta>
   </metadata>
   <manifest>
