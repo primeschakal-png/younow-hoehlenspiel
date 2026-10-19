@@ -21,6 +21,7 @@
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
   body {
     margin: 0;
     background: var(--bg);
@@ -152,6 +153,14 @@
     background: var(--gold-dim); color: #111; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
   }
+  figure.shot { margin: 0 0 20px; }
+  figure.shot img {
+    display: block; width: 100%; height: auto;
+    border: 1px solid var(--line); border-radius: 8px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.45);
+  }
+  figure.shot figcaption { margin-top: 6px; color: var(--muted); font-size: 14px; text-align: center; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 0 0 6px; }
   footer { text-align: center; color: var(--muted); font-size: 14px; padding: 24px; border-top: 1px solid var(--line); }
   @media (max-width: 860px) {
     .layout { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 20px 16px 60px; }
@@ -210,6 +219,7 @@
   <p>Im Mittelpunkt steht eine Figur, die weitgehend selbstständig lebt. Sie hat einen Namen, eine Herkunft, eine Klasse, Eigenheiten und eine eigene Sprechweise. Gesteuert wird sie von einem Sprachmodell (LLM). Sie weiß, dass sie auf Sendung ist, und spricht den Chat direkt an.</p>
   <p>Ihr Ziel ist einfach: so lange wie möglich überleben. Sie läuft durch ein Labyrinth aus Gassen, findet Vorräte und Truhen, kämpft gegen Monster, tappt in Fallen und sucht die Treppe nach unten. Jede Ebene wird neu erzeugt, und je tiefer es geht, desto gefährlicher wird es.</p>
   <p>Der Chat greift nur begrenzt ein. An jeder Kreuzung wird abgestimmt, wohin es geht. Mit Geschenken und Likes lässt sich die Figur bestechen. Und über ihre Erfahrungen mit dem Chat verändert sich ihr Charakter: Wer ihr hilft, gewinnt ihr Vertrauen, wer sie in Sackgassen schickt, verliert es.</p>
+<figure class="shot"><a href="bilder/stadt_tag.jpg"><img src="bilder/stadt_tag.jpg" alt="Die Figur an einer Kreuzung in der Magierstadt. Unten stimmt der Chat ab, rechts daneben steht eine Bewohnerin." loading="lazy" width="1280" height="720"></a><figcaption>Die Figur an einer Kreuzung in der Magierstadt. Unten stimmt der Chat ab, rechts daneben steht eine Bewohnerin.</figcaption></figure>
   <div class="cards">
     <div class="card"><h4>Autonom</h4><p>Ohne Chat entscheidet die Figur selbst und läuft weiter. Das Spiel kann rund um die Uhr laufen.</p></div>
     <div class="card"><h4>Mitbestimmen</h4><p>An Kreuzungen stimmt der Chat ab. Die Mehrheit entscheidet, die Figur darf maulen.</p></div>
@@ -231,6 +241,8 @@
   </table>
   </div>
   <h3>So läuft eine Abstimmung</h3>
+  <figure class="shot"><a href="bilder/keller.jpg"><img src="bilder/keller.jpg" alt="Abstimmung im Keller: drei Richtungen, jede mit Hinweis. Links liegt mit 2 zu 1 vorn." loading="lazy" width="1280" height="720"></a><figcaption>Abstimmung im Keller: drei Richtungen, jede mit Hinweis. Links liegt mit 2 zu 1 vorn.</figcaption></figure>
+
   <ul>
     <li>Die Figur bleibt an der Kreuzung stehen. Unten erscheint „Wohin soll ich gehen?“ mit den möglichen Richtungen, einem Balken pro Richtung und der Restzeit.</li>
     <li>Unter jeder Richtung steht ein Hinweis, etwa „Stille“, „Es riecht nach Gemüse“ oder „Etwas glitzert im Schatten“. Die Hinweise beruhen auf dem, was wirklich in dem Gang liegt. Sie sind aber nicht immer zuverlässig, manchmal führen sie in die Irre.</li>
@@ -256,6 +268,8 @@
 
 <section id="bild">
   <h2>Was man im Bild sieht</h2>
+  <figure class="shot"><a href="bilder/funfact.jpg"><img src="bilder/funfact.jpg" alt="Alles auf einen Blick: Status oben links, Charakter oben rechts, Abstimmung unten, die Erzählerin mit einem Fun Fact oben in der Mitte." loading="lazy" width="1280" height="720"></a><figcaption>Alles auf einen Blick: Status oben links, Charakter oben rechts, Abstimmung unten, die Erzählerin mit einem Fun Fact oben in der Mitte.</figcaption></figure>
+
   <div class="cards">
     <div class="card"><h4>Oben links: Status</h4><p>Ebene und Gebiet, Name und Beschreibung der Figur, Balken für Leben, Satt und Durst, dazu Vorräte: Proviant, Wasser, Heiltränke, Gold.</p></div>
     <div class="card"><h4>Oben rechts: Charakter</h4><p>Ein Kreuz mit einem wandernden Punkt zeigt, wie mutig und wie publikumsnah die Figur gerade ist, darunter der Archetyp und das Vertrauen.</p></div>
@@ -279,6 +293,10 @@
     <tr><td>ab 4</td><td>Höhlen</td><td>Kein Tageslicht mehr. Hier wird es richtig gefährlich.</td></tr>
   </table>
   </div>
+  <div class="shots">
+  <figure class="shot"><a href="bilder/stadt_nacht.jpg"><img src="bilder/stadt_nacht.jpg" alt="Die Stadt um 22 Uhr" loading="lazy" width="1280" height="720"></a><figcaption>Die Stadt um 22 Uhr</figcaption></figure>
+<figure class="shot"><a href="bilder/hoehle.jpg"><img src="bilder/hoehle.jpg" alt="Ebene 4: Höhlen, links lauert ein Monster" loading="lazy" width="1280" height="720"></a><figcaption>Ebene 4: Höhlen, links lauert ein Monster</figcaption></figure>
+  </div>
   <p>Auf jeder Ebene gibt es eine Treppe nach unten. Wo sie liegt, muss die Figur erst finden. Die Karte deckt sich nur dort auf, wo sie schon war.</p>
   <p>In der Stadt folgt das Licht der echten Uhrzeit: morgens rötlich, tagsüber hell, ab 17 Uhr Abendrot, ab 20 Uhr blau, nachts Dunkelheit mit Lichtkreis. Die Figur weiß, wie spät es ist, und kommentiert das gelegentlich.</p>
 </section>
@@ -292,6 +310,7 @@
     <li><b>Begegnungen:</b> Monster, Truhen, Fallen und Brunnen. Kämpfe und Fallen werden ausgewürfelt, die Figur hat dabei einen kleinen Bonus.</li>
   </ul>
   <p><b>Der Tod ist endgültig.</b> Die Figur kommt mit Name, Archetyp, erreichter Tiefe und Todesursache in die Ehrenhalle, die nach dem Tod kurz eingeblendet wird. Danach beginnt eine neue Figur mit neuer Persönlichkeit wieder in der Stadt.</p>
+<figure class="shot"><a href="bilder/tod.jpg"><img src="bilder/tod.jpg" alt="Nach dem Tod: Todesursache und Ehrenhalle, dann beginnt eine neue Figur." loading="lazy" width="1280" height="720"></a><figcaption>Nach dem Tod: Todesursache und Ehrenhalle, dann beginnt eine neue Figur.</figcaption></figure>
   <p class="note"><b>Hinweis:</b> Die Ehrenhalle merkt sich die letzten 20 Figuren, solange das Spiel läuft. Nach einem Neustart des Servers beginnt sie leer.</p>
 </section>
 
@@ -320,6 +339,7 @@
     <li>In der Stadt zoomt die Karte nach 2 Minuten im Lager heraus und zeigt die ganze Stadt mit ihren Bewohnern. Gegenstände sind in dieser Übersicht ausgeblendet.</li>
     <li>Sobald jemand schreibt oder etwas schenkt, packt die Figur zusammen, begrüßt den Besuch und es geht weiter.</li>
   </ul>
+  <figure class="shot"><a href="bilder/uebersicht.jpg"><img src="bilder/uebersicht.jpg" alt="Übersicht im Lager: die ganze Stadt mit ihren Bewohnern, Gegenstände sind ausgeblendet." loading="lazy" width="1280" height="720"></a><figcaption>Übersicht im Lager: die ganze Stadt mit ihren Bewohnern, Gegenstände sind ausgeblendet.</figcaption></figure>
 </section>
 
 <section id="bewohner">
@@ -330,6 +350,7 @@
     <li><b>Gespräche:</b> Trifft die Figur an einer Kreuzung oder im Lager auf einen Bewohner, kommt es zu einem richtigen Gespräch, manchmal mit philosophischem Einschlag. Bewohner reden auch miteinander, wenn sie sich in Sichtweite begegnen.</li>
     <li><b>Nützliches:</b> Manchmal verrät ein Bewohner, in welcher Himmelsrichtung die Treppe liegt, oder schenkt der Figur ein Stück Brot.</li>
   </ul>
+  <figure class="shot"><a href="bilder/gespraech.jpg"><img src="bilder/gespraech.jpg" alt="Eine Bewohnerin spricht die Figur im Vorbeigehen an." loading="lazy" width="1280" height="720"></a><figcaption>Eine Bewohnerin spricht die Figur im Vorbeigehen an.</figcaption></figure>
 </section>
 
 <section id="erzaehler">
@@ -356,7 +377,8 @@
       <pre><code>git clone https://github.com/primeschakal-png/younow-hoehlenspiel.git
 cd younow-hoehlenspiel</code></pre></li>
     <li><code>start.bat</code> doppelklicken. Beim ersten Start richtet sie eine eigene Python-Umgebung ein und installiert die nötigen Pakete. Ist <code>LLAMA_START=1</code> gesetzt, startet sie vorher den llama-server und wartet, bis er bereit ist. Läuft schon einer auf dem Port, wird er mitgenutzt.</li>
-    <li>Der Browser öffnet <code>http://localhost:8000/?testchat=1</code>. Unten rechts ist ein Test-Chat mit Namensfeld. Damit kannst du mehrere Zuschauer spielen und alle Befehle ausprobieren.</li>
+    <li>Der Browser öffnet <code>http://localhost:8000/?testchat=1</code>. Unten rechts ist ein Test-Chat mit Namensfeld. Damit kannst du mehrere Zuschauer spielen und alle Befehle ausprobieren.
+      <figure class="shot"><a href="bilder/testchat.jpg"><img src="bilder/testchat.jpg" alt="Der Test-Chat unten rechts: mehrere Namen, Stimmen, eine Frage an die Figur und ein Fun Fact." loading="lazy" width="1280" height="720"></a><figcaption>Der Test-Chat unten rechts: mehrere Namen, Stimmen, eine Frage an die Figur und ein Fun Fact.</figcaption></figure></li>
     <li>Auf <code>http://localhost:8000/einstellungen</code> trägst du deine Werte ein, zuerst Pfad zu llama-server und Modell oder die API. Werte, die einen Neustart brauchen, sind dort gekennzeichnet.</li>
   </ol>
   <h3>Aktualisieren</h3>
@@ -390,6 +412,7 @@ cd younow-hoehlenspiel</code></pre></li>
 <section id="einstellungen">
   <h2>Einstellungsseite</h2>
   <p>Erreichbar unter <code>http://localhost:8000/einstellungen</code>, und zwar nur vom eigenen PC. Über einen geteilten Link ist sie gesperrt. Die meisten Werte wirken sofort beim Speichern. Gespeichert wird in <code>.env</code>, und zwar nur, was von den Vorgaben in <code>.env.example</code> abweicht.</p>
+  <figure class="shot"><a href="bilder/einstellungen.jpg"><img src="bilder/einstellungen.jpg" alt="Die Einstellungsseite mit den Testknöpfen oben." loading="lazy" width="1280" height="900"></a><figcaption>Die Einstellungsseite mit den Testknöpfen oben.</figcaption></figure>
   <p>Oben gibt es Knöpfe zum Testen: <b>LLM testen</b>, <b>Neue Ebene</b>, <b>Neue Figur</b>, <b>Ton testen</b>, <b>Erzähler testen</b> und <b>Fun Fact testen</b>.</p>
   <div class="table-wrap">
   <table>
