@@ -2,12 +2,14 @@
 
 Chat-Spiel für einen YouNow-Stream. Eine autonome, LLM-gesteuerte Figur erkundet ein prozedural erzeugtes Höhlenlabyrinth. Die Zuschauer greifen nur begrenzt ein: Sie stimmen an Kreuzungen ab, können die Figur bestechen und formen über ihre Entscheidungen den Charakter der Figur.
 
+**Erklärung und Bedienungsanleitung:** [docs/anleitung.html](docs/anleitung.html) (für Zuschauer und Streamer).
+
 Die vollständige Beschreibung steht im [Pflichtenheft](docs/pflichtenheft.md), der Stand der Arbeit im [Fahrplan](docs/fahrplan.md).
 
 ## Starten (Windows)
 
 1. Python 3.10 oder neuer installieren (Haken bei "Add to PATH").
-2. `start.bat` doppelklicken. Beim ersten Start wird `.env` aus `.env.example` erzeugt, eine Python-Umgebung eingerichtet und `aiohttp` installiert.
+2. `start.bat` doppelklicken. Beim ersten Start wird eine Python-Umgebung eingerichtet und `aiohttp` installiert. Vorgaben stehen in `.env.example`, eigene Werte schreibt die Einstellungsseite nach `.env`.
 3. Der Browser öffnet `http://localhost:8000/?testchat=1`. Unten rechts ist der Test-Chat, dort `!links`, `!rechts`, `!geradeaus` oder `!zurueck` eintippen, sobald an einer Kreuzung abgestimmt wird. Mit verschiedenen Namen im kleinen Feld lassen sich mehrere Zuschauer simulieren.
 
 Die Figur spricht über den lokalen llama-server (Pfade und Parameter in `.env`, Vorgaben in `.env.example`). `start.bat` startet ihn mit, läuft schon einer auf dem Port, wird er mitgenutzt. Ohne LLM (`LLM_ENABLED=0`) entscheidet die Figur nach eigenem Gespür und bleibt stumm.

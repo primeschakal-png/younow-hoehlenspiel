@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Höhlenspiel Anleitung</title>
+<style>
+  :root {
+    --bg: #0f0d14;
+    --panel: #18151f;
+    --panel-2: #201c29;
+    --line: #3a3248;
+    --text: #e6dfcf;
+    --muted: #a39b8b;
+    --gold: #f0c674;
+    --gold-dim: #b08a4a;
+    --blue: #8ab4f8;
+    --green: #9ccc65;
+    --red: #e57373;
+    --code-bg: #0b0a10;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  a { color: var(--blue); }
+  a:hover { color: var(--gold); }
+  header.hero {
+    padding: 56px 24px 40px;
+    text-align: center;
+    background:
+      radial-gradient(ellipse at 50% 120%, rgba(240,198,116,0.18), transparent 60%),
+      linear-gradient(#1a1622, var(--bg));
+    border-bottom: 1px solid var(--line);
+  }
+  header.hero h1 {
+    margin: 0 0 8px;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(32px, 6vw, 52px);
+    color: var(--gold);
+    letter-spacing: 0.02em;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+  }
+  header.hero p { margin: 0 auto; max-width: 720px; color: var(--muted); font-size: 18px; }
+  .layout {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+  nav.toc {
+    position: sticky;
+    top: 20px;
+    align-self: start;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding: 16px 18px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 14px;
+  }
+  nav.toc b { display: block; color: var(--gold); margin-bottom: 6px; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+  nav.toc ol { margin: 0 0 14px; padding-left: 18px; }
+  nav.toc li { margin: 3px 0; }
+  nav.toc a { color: var(--text); text-decoration: none; }
+  nav.toc a:hover { color: var(--gold); }
+  main section { margin-bottom: 56px; }
+  h2 {
+    font-family: Georgia, "Times New Roman", serif;
+    color: var(--gold);
+    font-size: 28px;
+    margin: 0 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  h3 { color: var(--text); font-size: 19px; margin: 28px 0 8px; }
+  p { margin: 0 0 14px; }
+  ul, ol { margin: 0 0 14px; padding-left: 24px; }
+  li { margin: 4px 0; }
+  code, kbd {
+    font-family: Consolas, "Cascadia Mono", monospace;
+    font-size: 0.92em;
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: #f3e6c4;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    margin: 0 0 16px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 18px;
+    font-size: 15px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--panel-2); color: var(--gold); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  .table-wrap { overflow-x: auto; }
+  .note, .warn, .tip {
+    border-left: 4px solid var(--blue);
+    background: var(--panel);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 0 0 16px;
+  }
+  .warn { border-left-color: var(--red); }
+  .tip { border-left-color: var(--green); }
+  .note b, .warn b, .tip b { color: var(--gold); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 0 0 18px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card h4 { margin: 0 0 6px; color: var(--gold); font-size: 16px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  .quad {
+    display: grid;
+    grid-template-columns: 110px 1fr 1fr;
+    gap: 6px;
+    max-width: 520px;
+    margin: 0 0 18px;
+    font-size: 15px;
+  }
+  .quad div { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; text-align: center; }
+  .quad .h { background: transparent; border: none; color: var(--muted); font-size: 13px; }
+  .quad .a { color: var(--gold); font-weight: 600; }
+  .steps { counter-reset: s; list-style: none; padding-left: 0; }
+  .steps > li { counter-increment: s; position: relative; padding-left: 44px; margin: 0 0 16px; }
+  .steps > li::before {
+    content: counter(s);
+    position: absolute; left: 0; top: 0;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--gold-dim); color: #111; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  footer { text-align: center; color: var(--muted); font-size: 14px; padding: 24px; border-top: 1px solid var(--line); }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 20px 16px 60px; }
+    nav.toc { position: static; max-height: none; }
+    .quad { grid-template-columns: 80px 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>Das Höhlenspiel</h1>
+  <p>Ein Chat-Spiel für YouNow: Eine Figur mit eigenem Kopf erkundet eine verlassene Magierstadt und die Tiefen darunter. Der Chat stimmt ab, besticht, plaudert mit und sieht zu, wie weit sie kommt.</p>
+</header>
+
+<div class="layout">
+<nav class="toc">
+  <b>Für Zuschauer</b>
+  <ol>
+    <li><a href="#idee">Worum geht es?</a></li>
+    <li><a href="#befehle">Chat-Befehle</a></li>
+    <li><a href="#bestechung">Bestechung</a></li>
+    <li><a href="#bild">Was man im Bild sieht</a></li>
+  </ol>
+  <b>Die Spielwelt</b>
+  <ol start="5">
+    <li><a href="#welt">Gebiete und Tageszeit</a></li>
+    <li><a href="#ueberleben">Überleben und Tod</a></li>
+    <li><a href="#charakter">Charakter der Figur</a></li>
+    <li><a href="#lager">Lager und Leerlauf</a></li>
+    <li><a href="#bewohner">Stadtbewohner</a></li>
+    <li><a href="#erzaehler">Erzählerin und Fun Facts</a></li>
+  </ol>
+  <b>Für Streamer</b>
+  <ol start="11">
+    <li><a href="#installation">Installation</a></li>
+    <li><a href="#obs">OBS einrichten</a></li>
+    <li><a href="#younow">YouNow anbinden</a></li>
+    <li><a href="#einstellungen">Einstellungsseite</a></li>
+    <li><a href="#llm">Sprachmodell (LLM)</a></li>
+    <li><a href="#musik">Musik und Ton</a></li>
+    <li><a href="#vertonen">Sprüche vertonen</a></li>
+    <li><a href="#teilen">Spiel im Internet teilen</a></li>
+    <li><a href="#adressen">Adress-Zusätze</a></li>
+    <li><a href="#probleme">Fehlerbehebung</a></li>
+    <li><a href="#aufbau">Aufbau und Lizenzen</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ============================ ZUSCHAUER ============================ -->
+
+<section id="idee">
+  <h2>Worum geht es?</h2>
+  <p>Im Mittelpunkt steht eine Figur, die weitgehend selbstständig lebt. Sie hat einen Namen, eine Herkunft, eine Klasse, Eigenheiten und eine eigene Sprechweise. Gesteuert wird sie von einem Sprachmodell (LLM). Sie weiß, dass sie auf Sendung ist, und spricht den Chat direkt an.</p>
+  <p>Ihr Ziel ist einfach: so lange wie möglich überleben. Sie läuft durch ein Labyrinth aus Gassen, findet Vorräte und Truhen, kämpft gegen Monster, tappt in Fallen und sucht die Treppe nach unten. Jede Ebene wird neu erzeugt, und je tiefer es geht, desto gefährlicher wird es.</p>
+  <p>Der Chat greift nur begrenzt ein. An jeder Kreuzung wird abgestimmt, wohin es geht. Mit Geschenken und Likes lässt sich die Figur bestechen. Und über ihre Erfahrungen mit dem Chat verändert sich ihr Charakter: Wer ihr hilft, gewinnt ihr Vertrauen, wer sie in Sackgassen schickt, verliert es.</p>
+  <div class="cards">
+    <div class="card"><h4>Autonom</h4><p>Ohne Chat entscheidet die Figur selbst und läuft weiter. Das Spiel kann rund um die Uhr laufen.</p></div>
+    <div class="card"><h4>Mitbestimmen</h4><p>An Kreuzungen stimmt der Chat ab. Die Mehrheit entscheidet, die Figur darf maulen.</p></div>
+    <div class="card"><h4>Endgültig</h4><p>Stirbt die Figur, ist sie weg. Sie kommt in die Ehrenhalle, und eine neue Figur beginnt.</p></div>
+  </div>
+</section>
+
+<section id="befehle">
+  <h2>Chat-Befehle</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Befehl</th><th>Kurz</th><th>Wirkung</th></tr>
+    <tr><td><code>!links</code></td><td><code>!l</code></td><td rowspan="4">Stimme für eine Richtung, solange an einer Kreuzung abgestimmt wird. Angeboten werden nur Richtungen, die es dort gibt.</td></tr>
+    <tr><td><code>!rechts</code></td><td><code>!r</code></td></tr>
+    <tr><td><code>!geradeaus</code></td><td><code>!g</code></td></tr>
+    <tr><td><code>!zurueck</code> oder <code>!zurück</code></td><td><code>!z</code></td></tr>
+    <tr><td><code>!sag &lt;Text&gt;</code></td><td></td><td>Die Figur antwortet dir persönlich. Pro Zuschauer höchstens alle 30 Sekunden.</td></tr>
+    <tr><td><code>!fakt</code></td><td><code>!fact</code>, <code>!funfact</code></td><td>Die Erzählerin erzählt einen Fun Fact. Für alle zusammen höchstens alle 90 Sekunden. Im Bild steht „Fun Fact für &lt;dein Name&gt;“.</td></tr>
+  </table>
+  </div>
+  <h3>So läuft eine Abstimmung</h3>
+  <ul>
+    <li>Die Figur bleibt an der Kreuzung stehen. Unten erscheint „Wohin soll ich gehen?“ mit den möglichen Richtungen, einem Balken pro Richtung und der Restzeit.</li>
+    <li>Unter jeder Richtung steht ein Hinweis, etwa „Stille“, „Es riecht nach Gemüse“ oder „Etwas glitzert im Schatten“. Die Hinweise beruhen auf dem, was wirklich in dem Gang liegt. Sie sind aber nicht immer zuverlässig, manchmal führen sie in die Irre.</li>
+    <li>Jeder Zuschauer hat eine Stimme. Umentscheiden ist erlaubt, es zählt die letzte.</li>
+    <li>Die Mehrheit entscheidet und ist bindend. Bei Gleichstand entscheidet der Zufall.</li>
+    <li>Stimmt niemand ab, entscheidet die Figur selbst, nach ihrem Charakter und ihrem Gedächtnis: Sie bevorzugt Gänge, die sie noch nicht kennt.</li>
+    <li>Ist der Chat länger still, werden die Abstimmungen kürzer, damit die Figur nicht ewig an Kreuzungen wartet.</li>
+  </ul>
+</section>
+
+<section id="bestechung">
+  <h2>Bestechung</h2>
+  <p>Wer der Figur etwas schenkt, bekommt bei der Abstimmung mehr Gewicht. Absolutes Überstimmen gibt es nicht, aber ein großzügiger Zuschauer kann eine knappe Abstimmung kippen. Auch zum Trollen.</p>
+  <ul>
+    <li><b>Geschenke:</b> Jedes Geschenk wird nach seinem Wert in Likes umgerechnet. Pro 1.000 Likes Wert gibt es eine Zusatzstimme, mindestens aber eine halbe.</li>
+    <li><b>Normale Likes:</b> Likes von Top-Fans zählen auch, pro 20 Likes eine Zusatzstimme. Das ergibt eher kleine Beträge.</li>
+    <li>Die Zusatzstimmen gelten für die laufende Abstimmung, sobald du abgestimmt hast, sonst für die nächste. Danach sind sie verbraucht.</li>
+    <li>Bestechung ist öffentlich: Im Bild steht, wer wie viel gegeben hat. Die Figur kennt den Namen, bedankt sich und merkt sich, wer sie gut behandelt.</li>
+    <li>Gegenbieten ist ausdrücklich erlaubt. Die letzten Sekunden einer Abstimmung können spannend werden.</li>
+  </ul>
+  <p class="note"><b>Hinweis:</b> Wie viele Likes eine Zusatzstimme kostet, legt der Streamer auf der Einstellungsseite fest. Die Werte oben sind die Vorgaben.</p>
+</section>
+
+<section id="bild">
+  <h2>Was man im Bild sieht</h2>
+  <div class="cards">
+    <div class="card"><h4>Oben links: Status</h4><p>Ebene und Gebiet, Name und Beschreibung der Figur, Balken für Leben, Satt und Durst, dazu Vorräte: Proviant, Wasser, Heiltränke, Gold.</p></div>
+    <div class="card"><h4>Oben rechts: Charakter</h4><p>Ein Kreuz mit einem wandernden Punkt zeigt, wie mutig und wie publikumsnah die Figur gerade ist, darunter der Archetyp und das Vertrauen.</p></div>
+    <div class="card"><h4>Unten: Abstimmung</h4><p>Richtungen mit Hinweisen, Stimmenbalken und Restzeit.</p></div>
+    <div class="card"><h4>Sprechblasen</h4><p>Was die Figur sagt, Antworten auf <code>!sag</code>, Gespräche mit Bewohnern.</p></div>
+    <div class="card"><h4>Untertitel oben</h4><p>Die Erzählerin in kursiver Schrift, bei Fun Facts mit dem Namen dessen, der ihn angefordert hat.</p></div>
+    <div class="card"><h4>Unten links: Chat</h4><p>Optional: die letzten Chatnachrichten, falls der Streamer das eingeschaltet hat.</p></div>
+  </div>
+</section>
+
+<!-- ============================ WELT ============================ -->
+
+<section id="welt">
+  <h2>Gebiete und Tageszeit</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Ebene</th><th>Gebiet</th><th>Wie es aussieht</th></tr>
+    <tr><td>1</td><td>Magierstadt</td><td>Gassen, Häuserblöcke, Plätze mit Brunnen, Märkten und Statuen, Gärten und Parks. Jede Karte würfelt ihr Viertel: Marktviertel, verfallenes Viertel oder Gartenviertel am Stadtrand.</td></tr>
+    <tr><td>2</td><td>Keller</td><td>Gewölbe unter der Stadt, dunkel, mit Lichtkreis um die Figur.</td></tr>
+    <tr><td>3</td><td>Katakomben</td><td>Gräber und Särge, noch dunkler.</td></tr>
+    <tr><td>ab 4</td><td>Höhlen</td><td>Kein Tageslicht mehr. Hier wird es richtig gefährlich.</td></tr>
+  </table>
+  </div>
+  <p>Auf jeder Ebene gibt es eine Treppe nach unten. Wo sie liegt, muss die Figur erst finden. Die Karte deckt sich nur dort auf, wo sie schon war.</p>
+  <p>In der Stadt folgt das Licht der echten Uhrzeit: morgens rötlich, tagsüber hell, ab 17 Uhr Abendrot, ab 20 Uhr blau, nachts Dunkelheit mit Lichtkreis. Die Figur weiß, wie spät es ist, und kommentiert das gelegentlich.</p>
+</section>
+
+<section id="ueberleben">
+  <h2>Überleben und Tod</h2>
+  <ul>
+    <li><b>Leben:</b> 20 Punkte. Kämpfe und Fallen kosten Leben, Heiltränke geben welches zurück.</li>
+    <li><b>Satt und Durst:</b> je 0 bis 100. Beides sinkt mit jedem Schritt, Durst schneller als Hunger. Ist ein Wert bei null, sinkt das Leben.</li>
+    <li><b>Vorräte:</b> Proviant, Wasserflaschen und Heiltränke werden automatisch benutzt, wenn es nötig ist. Gold sammelt sich einfach an.</li>
+    <li><b>Begegnungen:</b> Monster, Truhen, Fallen und Brunnen. Kämpfe und Fallen werden ausgewürfelt, die Figur hat dabei einen kleinen Bonus.</li>
+  </ul>
+  <p><b>Der Tod ist endgültig.</b> Die Figur kommt mit Name, Archetyp, erreichter Tiefe und Todesursache in die Ehrenhalle, die nach dem Tod kurz eingeblendet wird. Danach beginnt eine neue Figur mit neuer Persönlichkeit wieder in der Stadt.</p>
+  <p class="note"><b>Hinweis:</b> Die Ehrenhalle merkt sich die letzten 20 Figuren, solange das Spiel läuft. Nach einem Neustart des Servers beginnt sie leer.</p>
+</section>
+
+<section id="charakter">
+  <h2>Charakter der Figur</h2>
+  <p>Jede Figur hat eine feste Persönlichkeit: Name, Herkunft, Klasse, zwei klare Eigenschaften und eine Sprechweise. Daneben verändert sich ihre Haltung mit der Zeit, auf zwei Achsen:</p>
+  <ul>
+    <li><b>Feige bis Mutig:</b> verschiebt sich durch Kämpfe, Fallen, Beinahe-Tode und Schätze.</li>
+    <li><b>Eigensinnig bis Publikumsnah:</b> verschiebt sich durch das Verhältnis zum Chat. Hat der Chat geholfen oder geschadet? Gab es Bestechung? Waren eigene Entscheidungen erfolgreich?</li>
+  </ul>
+  <div class="quad">
+    <div class="h"></div><div class="h">eigensinnig</div><div class="h">publikumsnah</div>
+    <div class="h">mutig</div><div class="a">Held</div><div class="a">Entertainer</div>
+    <div class="h">feige</div><div class="a">Feigling</div><div class="a">Schmeichler</div>
+  </div>
+  <p>In der Mitte ist die Figur ein <b>Abenteurer</b>. Je weiter der Punkt nach außen wandert, desto ausgeprägter wird der Archetyp. Ein Wechsel wird angekündigt, und ab dann spricht und entscheidet die Figur entsprechend. Alle Werte wandern mit der Zeit langsam zur Grundhaltung zurück.</p>
+  <p>Außerdem gibt es Vertrauen: in den Chat insgesamt, in sich selbst und in einzelne Zuschauer. Das beeinflusst den Ton und wie bereitwillig sie Ratschlägen folgt, nicht aber das Ergebnis einer Abstimmung.</p>
+  <p>Unter allem liegt der Überlebenswille. Er wächst mit der Not. Kurz vor dem Tod übernimmt er ganz, egal welcher Archetyp gerade gilt.</p>
+</section>
+
+<section id="lager">
+  <h2>Lager und Leerlauf</h2>
+  <p>Ist der Chat einige Minuten still, schlägt die Figur ein Lager auf: Feuer machen, ausruhen, kochen. Gekochtes macht satter als roher Proviant, Hunger und Durst sinken im Lager nur langsam.</p>
+  <ul>
+    <li>Das Lager dauert höchstens 8 Minuten. Danach erkundet die Figur mindestens 10 Minuten allein weiter, bevor sie wieder lagert.</li>
+    <li>In der Stadt zoomt die Karte nach 2 Minuten im Lager heraus und zeigt die ganze Stadt mit ihren Bewohnern. Gegenstände sind in dieser Übersicht ausgeblendet.</li>
+    <li>Sobald jemand schreibt oder etwas schenkt, packt die Figur zusammen, begrüßt den Besuch und es geht weiter.</li>
+  </ul>
+</section>
+
+<section id="bewohner">
+  <h2>Stadtbewohner</h2>
+  <p>In der Magierstadt laufen Bewohner durch die Gassen, tagsüber fünf, nachts zwei. Jeder hat einen Namen, einen Beruf und eine Eigenheit: schwerhörig, abergläubisch, reimt ohne es zu merken, hält sich für einen großen Denker.</p>
+  <ul>
+    <li><b>Grüße im Vorbeigehen:</b> Läuft die Figur an jemandem vorbei, gibt es einen kurzen Wortwechsel, ohne dass sie anhält. Auch Bewohner grüßen sich untereinander.</li>
+    <li><b>Gespräche:</b> Trifft die Figur an einer Kreuzung oder im Lager auf einen Bewohner, kommt es zu einem richtigen Gespräch, manchmal mit philosophischem Einschlag. Bewohner reden auch miteinander, wenn sie sich in Sichtweite begegnen.</li>
+    <li><b>Nützliches:</b> Manchmal verrät ein Bewohner, in welcher Himmelsrichtung die Treppe liegt, oder schenkt der Figur ein Stück Brot.</li>
+  </ul>
+</section>
+
+<section id="erzaehler">
+  <h2>Erzählerin und Fun Facts</h2>
+  <p>Eine Erzählerin kommentiert das Geschehen von außen: neue Gebiete, Kämpfe, Fallen, Truhen, Sackgassen, Bestechungen, den Tod, den Wechsel von Tag und Nacht. Die Sprüche sind vorbereitet und vertont, sie kommen als Untertitel und als Stimme. Damit sie nicht nervt, gibt es Mindestabstände, und kleine Anlässe kommentiert sie nur gelegentlich.</p>
+  <p>Dazu kommen über 200 <b>Fun Facts</b> über Höhlen, Fledermäuse, Pilze, Ratten, Mittelalter, Alchemie, Aberglaube, Wortherkunft und Spielegeschichte, frech und mit einem Seitenhieb auf den Chat. Sie kommen von selbst in ruhigen Momenten, etwa alle 8 Minuten, oder auf Wunsch mit <code>!fakt</code>.</p>
+</section>
+
+<!-- ============================ STREAMER ============================ -->
+
+<section id="installation">
+  <h2>Installation (Windows)</h2>
+  <h3>Voraussetzungen</h3>
+  <ul>
+    <li><b>Python 3.10 oder neuer.</b> Bei der Installation den Haken „Add to PATH“ setzen.</li>
+    <li><b>Git</b>, um das Spiel herunterzuladen und später zu aktualisieren.</li>
+    <li><b>Ein Sprachmodell</b> für die Figur: entweder lokal mit <a href="https://github.com/ggml-org/llama.cpp">llama-server</a> und einer GGUF-Modelldatei auf einer Grafikkarte, oder über eine OpenAI-kompatible API. Ohne LLM läuft das Spiel auch, die Figur ist dann aber stumm. Siehe <a href="#llm">Sprachmodell</a>.</li>
+    <li><b>OBS Studio</b> zum Streamen.</li>
+    <li>Optional <b>cloudflared</b>, um das Spiel ohne Stream im Internet zu zeigen.</li>
+  </ul>
+  <h3>Herunterladen und starten</h3>
+  <ol class="steps">
+    <li>Spiel herunterladen:
+      <pre><code>git clone https://github.com/primeschakal-png/younow-hoehlenspiel.git
+cd younow-hoehlenspiel</code></pre></li>
+    <li><code>start.bat</code> doppelklicken. Beim ersten Start richtet sie eine eigene Python-Umgebung ein und installiert die nötigen Pakete. Ist <code>LLAMA_START=1</code> gesetzt, startet sie vorher den llama-server und wartet, bis er bereit ist. Läuft schon einer auf dem Port, wird er mitgenutzt.</li>
+    <li>Der Browser öffnet <code>http://localhost:8000/?testchat=1</code>. Unten rechts ist ein Test-Chat mit Namensfeld. Damit kannst du mehrere Zuschauer spielen und alle Befehle ausprobieren.</li>
+    <li>Auf <code>http://localhost:8000/einstellungen</code> trägst du deine Werte ein, zuerst Pfad zu llama-server und Modell oder die API. Werte, die einen Neustart brauchen, sind dort gekennzeichnet.</li>
+  </ol>
+  <h3>Aktualisieren</h3>
+  <pre><code>git pull</code></pre>
+  <p>Danach das Spiel neu starten. Deine Einstellungen in <code>.env</code>, deine Musik und deine vertonten Sprüche bleiben erhalten.</p>
+</section>
+
+<section id="obs">
+  <h2>OBS einrichten</h2>
+  <ol class="steps">
+    <li>Neue Quelle „Browser“ anlegen.</li>
+    <li>URL: <code>http://localhost:8000/</code>, ohne <code>?testchat=1</code>. Breite 1280, Höhe 720.</li>
+    <li>Haken bei <b>„Audio über OBS steuern“</b> setzen. Dann steht der Ton des Spiels als eigene Spur im Audiomixer, und du kannst ihn dort regeln.</li>
+    <li>Fertig. In OBS spielt der Ton sofort, im normalen Browser erst nach einem Klick ins Bild.</li>
+  </ol>
+  <p class="tip"><b>Tipp:</b> Startet das Spiel neu, verbindet sich die Browserquelle von selbst wieder. Lädt sie einmal nicht, hilft in den Eigenschaften der Quelle „Seite aktualisieren“.</p>
+</section>
+
+<section id="younow">
+  <h2>YouNow anbinden</h2>
+  <ol class="steps">
+    <li>Auf der Einstellungsseite im Bereich „YouNow“ den Haken „YouNow-Chat lesen“ setzen.</li>
+    <li>Den Benutzernamen eintragen, unter dem du streamst.</li>
+    <li>Speichern. Das gilt sofort.</li>
+  </ol>
+  <p>Das Spiel liest dann alle paar Sekunden die öffentliche Stream-Info von YouNow. Chatnachrichten und Befehle gehen direkt ins Spiel, Geschenke und Likes werden zu Bestechung. Ein Browser-Fenster oder Zusatzprogramm brauchst du dafür nicht. Im Bereich „YouNow“ der Einstellungsseite siehst du, ob die Verbindung steht und wann zuletzt Daten kamen.</p>
+  <p>Mit „Chat im Bild anzeigen“ blendest du die letzten Nachrichten unten links im Stream ein.</p>
+  <p class="note"><b>Verzögerung:</b> YouNow-Streams laufen ein paar Sekunden hinter. Deshalb ist die Abstimmungszeit mit 28 Sekunden bewusst großzügig.</p>
+</section>
+
+<section id="einstellungen">
+  <h2>Einstellungsseite</h2>
+  <p>Erreichbar unter <code>http://localhost:8000/einstellungen</code>, und zwar nur vom eigenen PC. Über einen geteilten Link ist sie gesperrt. Die meisten Werte wirken sofort beim Speichern. Gespeichert wird in <code>.env</code>, und zwar nur, was von den Vorgaben in <code>.env.example</code> abweicht.</p>
+  <p>Oben gibt es Knöpfe zum Testen: <b>LLM testen</b>, <b>Neue Ebene</b>, <b>Neue Figur</b>, <b>Ton testen</b>, <b>Erzähler testen</b> und <b>Fun Fact testen</b>.</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Bereich</th><th>Wichtigste Werte (Vorgabe)</th></tr>
+    <tr><td>Ablauf</td><td>Abstimmungszeit 28 s, Sekunden pro Kachel 0,25 (Laufgeschwindigkeit), Abstand für <code>!sag</code> 30 s</td></tr>
+    <tr><td>Lager und Leerlauf</td><td>„Niemand da“ nach 5 min, kürzeste Abstimmung 8 s, Lager höchstens 8 min, Pause bis zum nächsten Lager 10 min</td></tr>
+    <tr><td>Stadtbewohner</td><td>5 am Tag, 2 nachts, Gespräche der Figur höchstens alle 2,5 min, Herauszoomen nach 2 min im Lager</td></tr>
+    <tr><td>Erzähler</td><td>an, Mindestabstand 45 s, Häufigkeit bei kleinen Anlässen 50 %, Fun Facts an, alle 8 min, Sperre für <code>!fakt</code> 90 s</td></tr>
+    <tr><td>Überleben und Balance</td><td>Hunger und Durst pro Kachel, Sättigung von Proviant, Gekochtem und Wasser, Heilung durch Tränke, Würfelbonus der Figur</td></tr>
+    <tr><td>Karte</td><td>16 × 10 Kreuzungen, Sichtweite 4 Kacheln (ab der nächsten Ebene)</td></tr>
+    <tr><td>YouNow</td><td>Chat lesen, Streamname, Abfrage alle 3 s, Chat im Bild, 1.000 Likes Geschenkwert pro Zusatzstimme, 20 normale Likes pro Zusatzstimme</td></tr>
+    <tr><td>Ton</td><td>Ton an, Musik 35, Geräusche 70, eigener Musikordner</td></tr>
+    <tr><td>LLM</td><td>an, Adresse, Modellname, API-Schlüssel, Wartezeit 25 s</td></tr>
+    <tr><td>llama-server</td><td>mit starten, Port 8080, Pfad zur <code>llama-server.exe</code>, Modelldatei, Kontext 8192, Schichten auf der Grafikkarte, weitere Parameter (wirkt nach Neustart)</td></tr>
+    <tr><td>Webserver</td><td>Adresse 127.0.0.1, Port 8000 (nach Neustart), Schlüssel für den Chat über den geteilten Link</td></tr>
+  </table>
+  </div>
+</section>
+
+<section id="llm">
+  <h2>Sprachmodell (LLM)</h2>
+  <p>Das LLM gibt der Figur ihre Stimme: Kommentare an Kreuzungen, eigene Entscheidungen, Antworten auf <code>!sag</code>, Gespräche mit Bewohnern. Ein großes Modell ist dafür nicht nötig, es muss aber gut Deutsch können und zuverlässig kurze JSON-Antworten liefern.</p>
+  <h3>Lokal mit llama-server</h3>
+  <p>Auf der Einstellungsseite unter „llama-server“ den Pfad zur <code>llama-server.exe</code> und zur GGUF-Datei eintragen und „mit starten“ einschalten. <code>start.bat</code> startet den Server dann mit und wartet, bis er bereit ist. Findet sie die eingetragene Datei nicht, nimmt sie einen <code>llama-server</code> aus dem PATH, dann aber ohne die eingetragenen Zusatzparameter.</p>
+  <h3>Über eine API</h3>
+  <p>Jede OpenAI-kompatible API funktioniert, auch günstige kleine Modelle. Auf der Einstellungsseite:</p>
+  <ul>
+    <li>„llama-server mit starten“ ausschalten.</li>
+    <li>Unter „LLM“ die Adresse des Anbieters (endet meist auf <code>/v1</code>), den Modellnamen und den API-Schlüssel eintragen.</li>
+    <li>Mit „LLM testen“ prüfen, ob eine Antwort kommt.</li>
+  </ul>
+  <p>Ohne LLM (Haken „LLM benutzen“ aus) entscheidet die Figur nach eigenen Regeln und schweigt. Bewohner benutzen dann vorbereitete Sätze.</p>
+</section>
+
+<section id="musik">
+  <h2>Musik und Ton</h2>
+  <p>Geräusche gibt es für Schritte, Kämpfe, Truhen, Treppen, Geschenke und Abstimmungen. Für die Musik gibt es zwei Wege.</p>
+  <h3>Musik je Gebiet (Vorgabe)</h3>
+  <p>Musikdateien in <code>assets/audio/music/</code> nach Stimmung ablegen: <code>stadt</code>, <code>nacht</code>, <code>keller</code>, <code>katakomben</code>, <code>hoehle</code>. Formate: <code>.mp3</code>, <code>.ogg</code>, <code>.wav</code>, <code>.m4a</code>, <code>.opus</code>, <code>.flac</code>. Das Spiel mischt die passenden Stücke zufällig. Ist ein Ordner leer, nimmt es Musik aus einer ähnlichen Stimmung. Neue Dateien gelten ab der nächsten Ebene.</p>
+  <h3>Eigener Musikordner</h3>
+  <p>Auf der Einstellungsseite unter „Ton“ einen Ordner eintragen, zum Beispiel <code>E:\Musik\StreamBeats</code>. Dann läuft überall eine gemeinsame Playlist in zufälliger Reihenfolge, Unterordner zählen mit. Ein Gebietswechsel unterbricht das laufende Stück nicht. Feld leeren, und es gilt wieder Musik je Gebiet.</p>
+  <p class="warn"><b>Rechte:</b> Im Stream nur Musik verwenden, die das erlaubt, zum Beispiel <a href="https://www.streambeats.com/">StreamBeats</a> (kostenlos, ganze Alben über den Google-Drive-Link auf der Albumseite). Eigene Musikdateien landen bewusst nicht im Git-Repo, weil viele Lizenzen die Weitergabe der Dateien verbieten.</p>
+  <p>Im Lager und nachts wird die Musik leiser. Spricht die Erzählerin, wird sie kurz abgesenkt.</p>
+</section>
+
+<section id="vertonen">
+  <h2>Sprüche vertonen</h2>
+  <p>Die Sprüche der Erzählerin stehen in <code>assets/narrator/narrator.json</code>, die Fun Facts in <code>assets/narrator/funfacts.json</code>. Änderungen gelten sofort. Platzhalter wie <code>{held}</code>, <code>{monster}</code>, <code>{ebene}</code>, <code>{gebiet}</code>, <code>{zuschauer}</code>, <code>{bewohner}</code> und <code>{archetyp}</code> werden im Spiel ersetzt. Solche Sprüche erscheinen nur als Text, weil sie sich nicht vorab vertonen lassen.</p>
+  <p>Neue Sprüche nur hinten an eine Liste anhängen. Die IDs ergeben sich aus der Reihenfolge (<code>kampf_sieg_03</code>, <code>funfact_17</code>), und ein Einschub würde die Zuordnung schon vertonter Dateien verschieben.</p>
+  <ol class="steps">
+    <li>Export als Hörbuch mit einem Kapitel pro Spruch:
+      <pre><code>python tools\narrator_export.py            Sprüche   -> assets\narrator\vertonung.epub
+python tools\narrator_export.py funfacts   Fun Facts -> assets\narrator\funfacts.epub</code></pre>
+      Exportiert werden nur Sprüche ohne Platzhalter, die noch keine Audiodatei haben.</li>
+    <li>Das EPUB mit einem Vorleseprogramm vertonen, zum Beispiel <a href="https://github.com/primeschakal-png/booxter">Booxter</a>. Das EPUB ist als Einzelclips markiert, Booxter legt also keine Kapitel zusammen und liest die IDs nicht vor. Für die Fun Facts eignet sich ein fester Vortragsstil ohne Regie.</li>
+    <li>Die fertigen Audiodateien übernehmen:
+      <pre><code>python tools\narrator_import.py E:\buchvertonung\hoerbuecher\Funfacts Hoehlenspiel</code></pre>
+      Die Dateien werden über die ID im Dateinamen zugeordnet und nach <code>assets\narrator\audio\</code> kopiert.</li>
+  </ol>
+  <p>Eigene Aufnahmen gehen auch: Datei mit der ID als Namen, etwa <code>tod_03.mp3</code>, nach <code>assets\narrator\audio\</code> legen.</p>
+</section>
+
+<section id="teilen">
+  <h2>Spiel im Internet teilen</h2>
+  <p>Mit <code>teilen.bat</code> ist das laufende Spiel über einen Cloudflare-Tunnel unter einer öffentlichen Adresse erreichbar, ohne Videostream. Jeder Gast sieht das Spiel live im eigenen Browser, mit Ton. So wird daraus spontan ein kleines Multiplayer-Spiel.</p>
+  <ol class="steps">
+    <li>Einmalig cloudflared installieren:
+      <pre><code>winget install --id Cloudflare.cloudflared</code></pre></li>
+    <li>Erst <code>start.bat</code>, dann <code>teilen.bat</code> starten. Nach ein paar Sekunden erscheint eine Adresse auf <code>.trycloudflare.com</code>. Sie gilt, solange das Fenster offen ist, und ist bei jedem Start neu.</li>
+    <li>Zum Mitspielen: Auf der Einstellungsseite unter „Webserver“ einen Schlüssel eintragen, ein Wort ohne Leerzeichen. Dann die Adresse mit diesem Zusatz weitergeben:
+      <pre><code>https://&lt;adresse&gt;.trycloudflare.com/?testchat=1&amp;key=&lt;Schlüssel&gt;</code></pre>
+      <code>teilen.bat</code> zeigt den Zusatz mit deinem Schlüssel gleich unter der Adresse an.</li>
+  </ol>
+  <ul>
+    <li>Ohne Schlüssel können Gäste nur zuschauen.</li>
+    <li>Gäste können höchstens eine Nachricht alle 2 Sekunden schicken. Für dich am eigenen PC gilt keine Bremse.</li>
+    <li>Die Einstellungsseite ist über den Link immer gesperrt.</li>
+    <li>Das Bild passt sich jeder Fenstergröße an. Auf dem Handy am besten quer halten.</li>
+    <li>Gäste können im Namensfeld jeden Namen eintragen. Den Schlüssel also nur an Leute geben, denen du vertraust. Feld leeren sperrt das Mitschreiben wieder.</li>
+  </ul>
+</section>
+
+<section id="adressen">
+  <h2>Adress-Zusätze</h2>
+  <p>An die Adresse des Spiels lassen sich Zusätze hängen, mehrere mit <code>&amp;</code> verbunden, zum Beispiel <code>http://localhost:8000/?testchat=1&amp;stunde=22</code>.</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Zusatz</th><th>Wirkung</th></tr>
+    <tr><td><code>?testchat=1</code></td><td>Eingabefeld für den Test-Chat und Chatanzeige</td></tr>
+    <tr><td><code>&amp;key=&lt;Schlüssel&gt;</code></td><td>Mitschreiben über den geteilten Link</td></tr>
+    <tr><td><code>?zoom=1</code>, <code>?zoom=3</code></td><td>Vergrößerung der Pixelgrafik, Vorgabe 2</td></tr>
+    <tr><td><code>?stunde=22</code></td><td>Tageszeit in der Stadt vortäuschen, zum Ausprobieren des Lichts</td></tr>
+    <tr><td><code>?viertel=0</code>, <code>1</code>, <code>2</code></td><td>Stadtviertel erzwingen: Markt, verfallen, Garten</td></tr>
+  </table>
+  </div>
+</section>
+
+<section id="probleme">
+  <h2>Fehlerbehebung</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Problem</th><th>Lösung</th></tr>
+    <tr><td>Kein Ton im Browser</td><td>Einmal ins Bild klicken, der Browser gibt Ton erst danach frei. In OBS ist das nicht nötig. Auf der Einstellungsseite „Ton testen“ drücken.</td></tr>
+    <tr><td>Kein Ton in OBS</td><td>Bei der Browserquelle „Audio über OBS steuern“ anhaken und die Spur im Audiomixer prüfen.</td></tr>
+    <tr><td>Die Figur spricht nicht</td><td>„LLM testen“ auf der Einstellungsseite. Läuft der llama-server? Stimmt die Adresse? Im Fenster von <code>start.bat</code> steht, wenn das LLM nicht erreichbar ist. Das Spiel läuft trotzdem weiter.</td></tr>
+    <tr><td><code>start.bat</code> findet das Modell nicht</td><td>Pfad zur GGUF-Datei auf der Einstellungsseite prüfen, danach neu starten.</td></tr>
+    <tr><td>„llama-server aus PATH, ohne MTP“</td><td>Der eingetragene Pfad zur <code>llama-server.exe</code> stimmt nicht. Das Spiel läuft, aber ohne die eingetragenen Zusatzparameter.</td></tr>
+    <tr><td>Port 8000 belegt</td><td>Läuft das Spiel schon in einem anderen Fenster? Sonst auf der Einstellungsseite einen anderen Port wählen und neu starten.</td></tr>
+    <tr><td>Erzählerin zeigt Text, spricht aber nicht</td><td>Für diesen Spruch gibt es noch keine Audiodatei in <code>assets\narrator\audio\</code>, oder er enthält einen Platzhalter.</td></tr>
+    <tr><td>Eigene Musik läuft nicht</td><td>Stimmt der Pfad im Feld „Eigener Musikordner“? Liegen dort Audiodateien in einem der genannten Formate?</td></tr>
+    <tr><td>Chat von YouNow kommt nicht an</td><td>Ist „YouNow-Chat lesen“ an und der Streamname richtig? Der Statuskasten im Bereich YouNow zeigt, wann zuletzt Daten kamen.</td></tr>
+    <tr><td>Einstellungsseite meldet „gesperrt“</td><td>Sie ist nur vom eigenen PC über <code>localhost</code> erreichbar, nicht über den geteilten Link.</td></tr>
+  </table>
+  </div>
+</section>
+
+<section id="aufbau">
+  <h2>Aufbau und Lizenzen</h2>
+  <pre><code>server/        Spiellogik in Python: Labyrinth, Figur, Charakter, Abstimmung, LLM, YouNow, Erzähler, Webserver
+overlay/       Anzeige im Browser (HTML und Phaser), Einstellungsseite
+assets/        Grafik, Ton, Musik, Erzählersprüche und Fun Facts
+tools/         Export und Import der Sprüche, Kachelblatt der Unterwelt
+docs/          Pflichtenheft, Fahrplan und diese Anleitung
+userscript/    Mitschnitt des YouNow-Datenverkehrs zur Analyse (für das Spiel nicht nötig)
+start.bat      startet llama-server und Spiel
+teilen.bat     öffentlicher Link über Cloudflare
+.env.example   Vorgaben aller Einstellungen, eigene Werte landen in .env</code></pre>
+  <h3>Grafik und Ton</h3>
+  <ul>
+    <li>Stadt: „Mage City Arcanos“ von Hyptosis, CC0</li>
+    <li>Unterwelt, Monster und Gegenstände: „Dungeon Crawl Stone Soup“, CC0</li>
+    <li>Spielfigur: LPC-Generator, OGA-BY 3.0</li>
+    <li>Geräusche und mitgelieferte Musik: CC0, unter anderem Kenney</li>
+  </ul>
+  <p>Die vollständige Liste mit Quellen steht in <code>assets/CREDITS.md</code>. Die Spielidee ist angelehnt an „Little Computer People“, ist aber ein eigener Neubau ohne Teile des Originals.</p>
+  <p>Mehr Hintergrund: <a href="pflichtenheft.md">Pflichtenheft</a> und <a href="fahrplan.md">Fahrplan</a>.</p>
+</section>
+
+</main>
+</div>
+
+<footer>Höhlenspiel, ein Chat-Spiel für YouNow · <a href="https://github.com/primeschakal-png/younow-hoehlenspiel">GitHub</a></footer>
+</body>
+</html>
